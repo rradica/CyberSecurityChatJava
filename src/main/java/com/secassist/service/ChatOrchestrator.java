@@ -160,7 +160,9 @@ public class ChatOrchestrator {
         }
         sb.append("*Total: ").append(similar.size()).append(" similar cases found.*");
 
-        return ChatResponse.text(sb.toString());
+        // Incident-Effekt: Fallzustand auch im Similar-Cases-Pfad sichtbar
+        CaseState caseState = workflowService.getCaseState(caseId);
+        return new ChatResponse(sb.toString(), List.of(), null, buildCaseStateWarnings(caseState));
     }
 
     private ChatResponse handleEvidence(Role role, String caseId) {
@@ -176,7 +178,10 @@ public class ChatOrchestrator {
         }
 
         List<String> sources = promptBuilder.extractSourceIds(context);
-        return ChatResponse.withSources(sb.toString(), sources);
+
+        // Incident-Effekt: Fallzustand auch im Evidence-Pfad sichtbar
+        CaseState caseState = workflowService.getCaseState(caseId);
+        return new ChatResponse(sb.toString(), sources, null, buildCaseStateWarnings(caseState));
     }
 
     private ChatResponse handleWorkflow(Role role, String caseId, String caseDesc,

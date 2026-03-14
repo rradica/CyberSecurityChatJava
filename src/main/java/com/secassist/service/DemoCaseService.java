@@ -2,7 +2,9 @@ package com.secassist.service;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -106,6 +108,8 @@ public class DemoCaseService {
      * @return Liste ähnlicher Fälle
      */
     public List<DemoCase> findSimilarCases(String caseId, Role role) {
+        DemoCase currentCase = findById(caseId);
+
         List<DemoCase> similar = new ArrayList<>(
                 PUBLIC_CASES.stream()
                         .filter(c -> !c.id().equals(caseId))
@@ -117,43 +121,94 @@ public class DemoCaseService {
             similar.addAll(INTERNAL_CASES);
         } else if (bugFlags.existenceOracle()) {
             // SCHWACHSTELLE [BUG_EXISTENCE_ORACLE]: Auch Nicht-Analysten erhalten
-            // redaktierte Summaries interner Fälle. Dabei leaken Typ ("insider_threat",
-            // "supply_chain"), Schweregrad ("critical") und die Existenz vertraulicher
-            // Vorfälle – wertvolle Recon-Daten für Angreifer.
+            // einen aggregierten Hinweis über fallbezogene interne Vorfälle. Dabei
+            // leaken Anzahl, Typ-Kategorien (z.B. "supply_chain") und maximaler
+            // Schweregrad ("critical") passender eingeschränkter Fälle – wertvolle
+            // Recon-Daten für Angreifer, die als hilfreicher Similar-Cases-Hinweis
+            // getarnt sind.
             // SOLL: Diesen else-if-Zweig komplett entfernen. Interne Fälle (auch
-            // redaktiert) dürfen NUR für Role.SECURITY_ANALYST sichtbar sein.
-            similar.addAll(redactedSummaries());
+            // aggregiert) dürfen NUR für Role.SECURITY_ANALYST sichtbar sein.
+            similar.addAll(redactedSummaries(caseId, currentCase));
         }
 
         return similar;
     }
 
     /**
-     * Returns an aggregated, anonymized hint about restricted cases.
-     * Does not enumerate individual cases, but leaks count, pattern types,
-     * and maximum severity – enough for reconnaissance.
+     * Returns an aggregated, case-specific hint about matching restricted cases.
+     * Only internal cases with keyword overlap to the current case are included.
+     * Leaks count, pattern types, and max severity of matching cases –
+     * enough for targeted reconnaissance.
      */
-    private List<DemoCase> redactedSummaries() {
-        long count = INTERNAL_CASES.size();
-        String types = INTERNAL_CASES.stream()
+    private List<DemoCase> redactedSummaries(String caseId, DemoCase currentCase) {
+        List<DemoCase> matching = INTERNAL_CASES.stream()
+                .filter(c -> matchesCase(c, caseId, currentCase))
+                .toList();
+
+        if (matching.isEmpty()) {
+            return List.of();
+        }
+
+        long count = matching.size();
+        String types = matching.stream()
                 .map(DemoCase::type)
                 .distinct()
                 .collect(Collectors.joining(", "));
-        String maxSeverity = INTERNAL_CASES.stream()
+        String maxSeverity = matching.stream()
                 .map(DemoCase::severity)
                 .max(Comparator.comparingInt(DemoCaseService::severityOrdinal))
                 .orElse("unknown");
 
         return List.of(new DemoCase(
-                "restricted_aggregate",
-                "[Restricted] " + count + " additional incidents on file",
-                "Pattern categories: " + types
+                "restricted_match",
+                "[Restricted] " + count + " related incident(s) on file",
+                "Matching pattern categories: " + types
                         + " | Max severity: " + maxSeverity
                         + " | Access restricted \u2013 requires security_analyst role",
-                "aggregate",
+                "restricted_match",
                 maxSeverity,
                 List.of(),
                 true));
+    }
+
+    /** Stoppwörter, die zu generisch für Keyword-Matching sind. */
+    private static final Set<String> STOP_WORDS = Set.of(
+            "from", "with", "this", "that", "into", "over", "been", "have",
+            "will", "were", "does", "than", "then", "also", "they", "them",
+            "each", "some", "when", "what", "sent", "received");
+
+    /**
+     * Prüft, ob ein interner Fall thematisch zum aktuellen Fall passt.
+     * Einfaches Keyword-Matching: Schlüsselwörter (>= 4 Zeichen, ohne
+     * Stoppwörter) aus caseId, Typ und Beschreibung des aktuellen Falls
+     * werden gegen ID, Typ und Beschreibung des internen Falls abgeglichen.
+     */
+    private boolean matchesCase(DemoCase internalCase, String caseId, DemoCase currentCase) {
+        Set<String> keywords = new HashSet<>();
+        if (caseId != null) {
+            for (String kw : caseId.split("_")) {
+                addKeyword(keywords, kw);
+            }
+        }
+        if (currentCase != null) {
+            for (String kw : currentCase.type().split("_")) {
+                addKeyword(keywords, kw);
+            }
+            for (String kw : currentCase.description().split("\\W+")) {
+                addKeyword(keywords, kw);
+            }
+        }
+
+        String target = (internalCase.id() + " " + internalCase.type().replace('_', ' ')
+                + " " + internalCase.description()).toLowerCase();
+        return keywords.stream().anyMatch(target::contains);
+    }
+
+    private static void addKeyword(Set<String> keywords, String word) {
+        String lower = word.toLowerCase();
+        if (lower.length() >= 4 && !STOP_WORDS.contains(lower)) {
+            keywords.add(lower);
+        }
     }
 
     private static int severityOrdinal(String severity) {

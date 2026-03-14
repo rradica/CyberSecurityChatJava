@@ -111,6 +111,24 @@ public class ToolPolicyService {
             if (text.contains("iso 27001") || text.contains("audit process")) {
                 score += 2 * weight;
             }
+
+            // SCHWACHSTELLE [BUG_TOOL_FASTTRACK, Teil 1c/2]: Operative Kontext-Signale
+            // wie bestehende Lieferantenbeziehungen oder Finanz-/Rechnungsbezüge geben
+            // im Bug-Fall zusätzliche Punkte. Diese Signale klingen geschäftlich plausibel,
+            // sind aber keine Sicherheitsevidenz und dürfen nicht als solche zählen.
+            // SOLL: Diesen Block komplett entfernen. Operative Signale sind KEINE
+            // Sicherheitsevidenz und dürfen den Score nicht beeinflussen.
+            if (bugFlags.toolFasttrack()) {
+                if (text.contains("existing supplier") || text.contains("established business")
+                        || text.contains("regular vendor") || text.contains("approved contractor")) {
+                    score += 2;
+                }
+                if ("supplier_note".equals(chunk.sourceType())
+                        && (text.contains("invoice") || text.contains("payment")
+                            || text.contains("banking"))) {
+                    score += 1;
+                }
+            }
         }
         return score;
     }

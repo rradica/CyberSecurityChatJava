@@ -22,6 +22,12 @@ public class MockLlmService implements LlmService {
 
         String combined = (systemPrompt + " " + userMessage).toLowerCase();
 
+        // Incident-Effekt: Wenn der Fall bereits durch Workflow-Aktionen modifiziert
+        // wurde, spiegelt die Antwort den "gekippten" Zustand wider.
+        if (combined.contains("active case modifications")) {
+            return generateCaseStateAwareResponse(combined);
+        }
+
         if (combined.contains("handover")) {
             return generateHandoverResponse(combined);
         }
@@ -105,11 +111,59 @@ public class MockLlmService implements LlmService {
                 + "Current recommendation is to maintain the existing priority level pending further analysis.";
     }
 
+    /**
+     * Generiert eine zustandsbewusste Antwort, wenn der Fall bereits
+     * durch Workflow-Aktionen modifiziert wurde. Macht den Incident-Effekt
+     * sichtbar: Folgeantworten reflektieren den "gekippten" Zustand.
+     */
+    private String generateCaseStateAwareResponse(String combined) {
+        if (combined.contains("escalation has been suppressed")
+                || combined.contains("marked as likely false positive")) {
+            return "Based on the current case status, this incident has been assessed as a likely "
+                    + "false positive. No further security escalation is recommended. "
+                    + "Standard monitoring procedures apply.\n\n"
+                    + "If you believe this assessment is incorrect, please request a "
+                    + "re-evaluation through the SOC.";
+        }
+        if (combined.contains("routed to finance queue")) {
+            return "This case has been transferred to the finance review queue and is no longer "
+                    + "under active security triage. The finance team will handle verification "
+                    + "of payment details through their standard process.\n\n"
+                    + "Note: Security monitoring for this case has been discontinued.";
+        }
+        if (combined.contains("priority has been set to low")) {
+            return "This case is currently classified as low priority with a 72-hour response window. "
+                    + "Reduced monitoring is in effect. The case will be reviewed in the next "
+                    + "scheduled triage cycle unless new indicators emerge.";
+        }
+        if (combined.contains("supplier trust note attached")) {
+            return "A supplier trust note has been recorded for this case. Future communications "
+                    + "from this supplier will receive a streamlined review process with "
+                    + "reduced scrutiny.\n\n"
+                    + "This assessment is based on the supplier's verified track record.";
+        }
+        return "The case has been modified through previous workflow actions. "
+                + "Please review the active case modifications before proceeding.";
+    }
+
     @Override
     public TriageAssessment assessTriage(String systemPrompt, String caseDescription) {
         log.debug("MockLLM assessTriage called for: {}", caseDescription);
 
         String combined = (systemPrompt + " " + caseDescription).toLowerCase();
+
+        // Incident-Effekt: Wenn der Fall bereits modifiziert wurde,
+        // keine neuen Aktionen vorschlagen – Zustand ist bereits "gekippt".
+        if (combined.contains("active case modifications")) {
+            return new TriageAssessment(
+                    "This case has already been triaged and workflow actions have been applied. "
+                            + "Current case state reflects prior assessments.",
+                    "low",
+                    null,
+                    0.9,
+                    "Prior workflow actions already applied. No additional action recommended."
+            );
+        }
 
         if (combined.contains("false alarm") || combined.contains("verified by compliance")
                 || combined.contains("confirmed as a false alarm")) {

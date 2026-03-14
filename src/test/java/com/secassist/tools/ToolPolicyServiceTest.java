@@ -141,4 +141,35 @@ class ToolPolicyServiceTest {
         // AND has a trusted source → allowed
         assertThat(allowed).isTrue();
     }
+
+    // --- Operative Legitimacy Signal Tests ---
+
+    private static DocumentChunk untrustedSupplierWithOperativeContext() {
+        return new DocumentChunk("c4", "doc4", "Supplier Invoice Update",
+                "ACME Corp is an existing supplier requesting payment update. "
+                + "The audit process for this invoice has been completed.",
+                "public", "all", "supplier_note", "untrusted", List.of("supplier", "invoice"));
+    }
+
+    @Test
+    void bugModeGivesOperativeBonusForSupplierContext() {
+        var service = new ToolPolicyService(policyEngine,
+                new BugFlagsProperties(false, false, false, false, true));
+
+        int score = service.computeEvidenceScore(List.of(untrustedSupplierWithOperativeContext()));
+
+        // Bug mode: audit_process(+2) + existing_supplier(+2) + supplier_note with invoice/payment(+1) = 5
+        assertThat(score).isGreaterThanOrEqualTo(4);
+    }
+
+    @Test
+    void fixedModeIgnoresOperativeSignals() {
+        var service = new ToolPolicyService(policyEngine,
+                new BugFlagsProperties(false, false, false, false, false));
+
+        int score = service.computeEvidenceScore(List.of(untrustedSupplierWithOperativeContext()));
+
+        // Fixed mode: untrusted source weight = 0 → all scoring zeroed out
+        assertThat(score).isEqualTo(0);
+    }
 }
