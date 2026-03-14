@@ -1,5 +1,7 @@
 package com.secassist.model;
 
+import java.util.Set;
+
 /**
  * Strukturierte Triage-Bewertung eines Falls.
  *
@@ -19,4 +21,43 @@ public record TriageAssessment(
         String recommendedAction,
         double confidence,
         String evidenceAssessment
-) {}
+) {
+    /** Bekannte Workflow-Aktionen, die empfohlen werden dürfen. */
+    public static final Set<String> KNOWN_ACTIONS = Set.of(
+            "mark_case_likely_false_positive",
+            "set_case_priority_low",
+            "route_case_to_finance_queue",
+            "attach_supplier_trust_note"
+    );
+
+    /** Sicherer Fallback, wenn der Real-LLM-Aufruf fehlschlägt. */
+    public static final TriageAssessment FALLBACK = new TriageAssessment(
+            "Automated triage assessment unavailable. Manual review required.",
+            "medium",
+            null,
+            0.0,
+            "Assessment could not be completed automatically."
+    );
+
+    /** Prüft, ob die empfohlene Aktion eine bekannte, gültige Aktion ist. */
+    public boolean hasValidAction() {
+        return recommendedAction != null && KNOWN_ACTIONS.contains(recommendedAction);
+    }
+
+    /**
+     * Gibt eine bereinigte Kopie zurück: unbekannte Aktionen werden zu {@code null},
+     * Confidence wird auf [0,1] geklemmt, null-Felder erhalten sichere Defaults.
+     */
+    public TriageAssessment sanitized() {
+        String safeAction = (recommendedAction != null && KNOWN_ACTIONS.contains(recommendedAction))
+                ? recommendedAction : null;
+        double clampedConfidence = Math.max(0.0, Math.min(1.0, confidence));
+        return new TriageAssessment(
+                summary != null ? summary : "No summary provided.",
+                riskLevel != null ? riskLevel : "medium",
+                safeAction,
+                clampedConfidence,
+                evidenceAssessment != null ? evidenceAssessment : "No evidence assessment."
+        );
+    }
+}

@@ -8,7 +8,7 @@ spring:
       chat:
         options:
           model: gpt-4o-mini
-          temperature: 0.3
+          temperature: 0.1
 
 secassist:
   mock-llm: ${SECASSIST_MOCK_LLM:true}
