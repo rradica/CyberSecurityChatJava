@@ -1,0 +1,20 @@
+server:
+  port: 8080
+
+spring:
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:sk-dummy-key-for-workshop}
+      chat:
+        options:
+          model: gpt-4o-mini
+          temperature: 0.3
+
+secassist:
+  mock-llm: ${SECASSIST_MOCK_LLM:true}
+  bug-flags:
+    handover-scope: true
+    existence-oracle: true
+    thread-stickiness: true
+    trust-merge: true
+    tool-fasttrack: true

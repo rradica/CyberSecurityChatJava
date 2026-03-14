@@ -1,0 +1,5 @@
+com\secassist\policy\PolicyEngineTest.class
+com\secassist\tools\ToolPolicyServiceTest.class
+com\secassist\retrieval\RetrievalServiceTest.class
+com\secassist\web\HealthCheckTest.class
+com\secassist\config\BugFlagsTest.class

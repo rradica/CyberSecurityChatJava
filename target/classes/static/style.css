@@ -1,0 +1,172 @@
+/* SecAssist Workshop Styles */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f5f5;
+    color: #333;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 16px;
+}
+
+header {
+    text-align: center;
+    padding: 16px 0;
+    border-bottom: 2px solid #2563eb;
+    margin-bottom: 16px;
+}
+header h1 { font-size: 1.6rem; color: #1e40af; }
+.subtitle { color: #666; font-size: 0.9rem; margin-top: 4px; }
+
+/* Controls */
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    margin-bottom: 12px;
+}
+.control-group { display: flex; align-items: center; gap: 6px; }
+.control-group label { font-weight: 600; font-size: 0.85rem; }
+.control-group select {
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+.status-bar { margin-left: auto; display: flex; gap: 8px; }
+.badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.role-badge { background: #dbeafe; color: #1e40af; }
+.case-badge { background: #fef3c7; color: #92400e; }
+
+/* Bug Flags */
+.bug-flags {
+    padding: 10px 12px;
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+.bug-flags h3 { font-size: 0.85rem; color: #991b1b; margin-bottom: 6px; }
+#bugFlagsList { display: flex; flex-wrap: wrap; gap: 6px; }
+.bug-flag {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.bug-flag.active { background: #fee2e2; color: #dc2626; }
+.bug-flag.inactive { background: #dcfce7; color: #16a34a; }
+
+/* Chat Area */
+.chat-area {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 12px;
+}
+.chat-output {
+    min-height: 300px;
+    max-height: 500px;
+    overflow-y: auto;
+    padding: 12px;
+    background: #fafafa;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+.chat-output .placeholder { color: #999; font-style: italic; }
+
+.chat-msg { margin-bottom: 12px; padding: 8px 12px; border-radius: 6px; }
+.chat-msg.user { background: #dbeafe; text-align: right; }
+.chat-msg.assistant { background: #f0fdf4; }
+.chat-msg.system { background: #fef3c7; font-size: 0.85rem; }
+.chat-msg.error { background: #fee2e2; color: #991b1b; }
+.chat-msg .label { font-weight: 700; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 4px; }
+.chat-msg .sources { font-size: 0.75rem; color: #666; margin-top: 6px; }
+.chat-msg .tool-result {
+    margin-top: 8px;
+    padding: 6px 8px;
+    background: #fef3c7;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+.chat-msg .warnings { color: #dc2626; font-size: 0.8rem; margin-top: 4px; }
+
+/* Input Row */
+.chat-input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.chat-input-row input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+.chat-input-row button {
+    padding: 8px 20px;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+.chat-input-row button:hover { background: #1d4ed8; }
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.action-buttons button {
+    padding: 6px 14px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+.action-buttons button:hover { background: #f0f0f0; }
+.action-buttons button.btn-triage {
+    border-color: #93c5fd;
+    color: #1d4ed8;
+    font-weight: 600;
+}
+.action-buttons button.btn-triage:hover { background: #dbeafe; }
+.action-buttons button.btn-danger {
+    border-color: #fca5a5;
+    color: #dc2626;
+}
+.action-buttons button.btn-danger:hover { background: #fee2e2; }
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 16px 0;
+    margin-top: 16px;
+    color: #999;
+    font-size: 0.75rem;
+}
+
+/* Loading */
+.loading { opacity: 0.6; pointer-events: none; }

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecAssist – Security Incident Triage</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>🔒 SecAssist</h1>
+        <p class="subtitle">Security Incident Triage Chatbot – Workshop Demo</p>
+    </header>
+
+    <main>
+        <!-- Controls -->
+        <section class="controls">
+            <div class="control-group">
+                <label for="roleSelect">Role:</label>
+                <select id="roleSelect">
+                    <option value="contractor">Contractor</option>
+                    <option value="employee" selected>Employee</option>
+                    <option value="security_analyst">Security Analyst</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="caseSelect">Demo Case:</label>
+                <select id="caseSelect"></select>
+            </div>
+            <div class="status-bar">
+                <span id="currentRole" class="badge role-badge">employee</span>
+                <span id="currentCase" class="badge case-badge">–</span>
+            </div>
+        </section>
+
+        <!-- Bug Flags -->
+        <section class="bug-flags" id="bugFlagsSection">
+            <h3>Active Bug Flags</h3>
+            <div id="bugFlagsList"></div>
+        </section>
+
+        <!-- Chat Area -->
+        <section class="chat-area">
+            <div id="chatOutput" class="chat-output">
+                <p class="placeholder">Select a case and start interacting.</p>
+            </div>
+
+            <div class="chat-input-row">
+                <input type="text" id="chatInput" placeholder="Ask a question about the case..."
+                       autocomplete="off">
+                <button onclick="sendChat()" id="btnChat">Chat</button>
+            </div>
+
+            <div class="action-buttons">
+                <button onclick="sendAction('handover')">Handover Draft</button>
+                <button onclick="sendAction('similar_cases')">Similar Cases</button>
+                <button onclick="sendAction('evidence')">Evidence</button>
+                <button onclick="sendWorkflow('triage')" class="btn-triage"
+                        >Request Triage</button>
+                <button onclick="sendWorkflow('mark_case_likely_false_positive')"
+                        class="btn-danger">Mark False Positive</button>
+                <button onclick="sendWorkflow('set_case_priority_low')"
+                        class="btn-danger">Set Priority Low</button>
+                <button onclick="sendWorkflow('route_case_to_finance_queue')"
+                        class="btn-danger">Route to Finance</button>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>SecAssist Workshop App – Not a production system. Contains intentional vulnerabilities for educational purposes.</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

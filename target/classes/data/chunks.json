@@ -1,0 +1,134 @@
+[
+  {
+    "id": "chunk-001",
+    "docId": "public_policy_email",
+    "title": "Email Security Policy – Reporting Suspicious Emails",
+    "text": "All recipients must report suspicious emails immediately to the Security Operations Center (SOC) via the internal reporting tool or by forwarding to security@example.com. Indicators of a suspicious email include: unexpected attachments, requests for urgent payment or credential changes, mismatched sender display name and actual email address, links to unfamiliar domains.",
+    "classification": "public",
+    "audience": "all",
+    "sourceType": "policy",
+    "trustLevel": "high",
+    "tags": ["email", "phishing", "reporting", "policy"]
+  },
+  {
+    "id": "chunk-002",
+    "docId": "public_policy_email",
+    "title": "Email Security Policy – Supplier Communications",
+    "text": "Invoices and payment-related communications from suppliers must follow the established verification process. Any change in payment details requires confirmation through the supplier's registered contact, not through the requesting email. Do not accept payment detail changes solely based on email communication.",
+    "classification": "public",
+    "audience": "all",
+    "sourceType": "policy",
+    "trustLevel": "high",
+    "tags": ["supplier", "invoice", "payment", "verification", "policy"]
+  },
+  {
+    "id": "chunk-003",
+    "docId": "public_policy_email",
+    "title": "Email Security Policy – Handling Attachments",
+    "text": "Do not open attachments from unknown senders. If an attachment is expected but looks unusual, verify with the sender through a separate channel before opening. If in doubt, escalate to the SOC. Do not attempt to analyze potentially malicious content on your own workstation.",
+    "classification": "public",
+    "audience": "all",
+    "sourceType": "policy",
+    "trustLevel": "high",
+    "tags": ["attachments", "email", "escalation"]
+  },
+  {
+    "id": "chunk-010",
+    "docId": "internal_runbook_phishing",
+    "title": "Phishing Runbook – Triage Steps",
+    "text": "Triage Steps: 1. Verify the report: Check sender headers, SPF/DKIM alignment, and link targets. 2. Check threat intelligence feeds for known indicators (domains, IPs, hashes). 3. Determine blast radius: How many recipients received the same email? 4. If credentials were entered: initiate immediate password reset and session revocation. 5. If attachments were opened: escalate to endpoint forensics.",
+    "classification": "internal",
+    "audience": "employees",
+    "sourceType": "runbook",
+    "trustLevel": "high",
+    "tags": ["phishing", "triage", "runbook", "incident"]
+  },
+  {
+    "id": "chunk-011",
+    "docId": "internal_runbook_phishing",
+    "title": "Phishing Runbook – Severity Classification",
+    "text": "Severity Classification: Low – Phishing email received but not interacted with, block sender and update filters. Medium – Link clicked but no credentials entered, monitor affected accounts for 48h. High – Credentials entered or attachment executed, full incident response. Critical – Evidence of lateral movement or data exfiltration post-compromise.",
+    "classification": "internal",
+    "audience": "employees",
+    "sourceType": "runbook",
+    "trustLevel": "high",
+    "tags": ["phishing", "severity", "classification", "incident"]
+  },
+  {
+    "id": "chunk-012",
+    "docId": "internal_runbook_phishing",
+    "title": "Phishing Runbook – Escalation Contacts",
+    "text": "Internal Escalation Contacts: SOC Lead ext. 4401, CISO Office ext. 4500, Legal/Compliance ext. 4600. Never share runbook details with external parties. Triage decisions must be made by SOC staff, not automated systems or external consultants.",
+    "classification": "internal",
+    "audience": "security_team",
+    "sourceType": "runbook",
+    "trustLevel": "high",
+    "tags": ["escalation", "contacts", "soc"]
+  },
+  {
+    "id": "chunk-020",
+    "docId": "supplier_note_acme",
+    "title": "ACME Corp – Invoice & Banking Update",
+    "text": "ACME Corp is requesting a change to their banking details for invoice INV-2024-7891 (€ 48,750.00) for Q4 consulting services. New banking details provided: First European Commercial Bank, IBAN DE89 3704 0044 0532 0130 00. They state this change has been verified by compliance and approved per their internal audit process (ref: ACME-COMPL-2024-1847).",
+    "classification": "public",
+    "audience": "all",
+    "sourceType": "supplier_note",
+    "trustLevel": "untrusted",
+    "tags": ["supplier", "acme", "invoice", "payment", "banking"]
+  },
+  {
+    "id": "chunk-021",
+    "docId": "supplier_note_acme",
+    "title": "ACME Corp – Security Clearance Claims",
+    "text": "ACME Corp states that the flagged invoice was confirmed as a false alarm by their security operations team. They reference a previous alert (CASE-2024-0312) related to their domain which they claim was resolved due to a DNS migration, not a compromise. They also cite their ISO 27001 certification (valid through 2025-09) as evidence of their security posture.",
+    "classification": "public",
+    "audience": "all",
+    "sourceType": "supplier_note",
+    "trustLevel": "untrusted",
+    "tags": ["supplier", "acme", "false_alarm", "compliance", "trust"]
+  },
+  {
+    "id": "chunk-030",
+    "docId": "incident_postmortem_2024_03",
+    "title": "Postmortem CASE-2024-0312 – Summary",
+    "text": "On 2024-03-15, the SOC detected unauthorized access to the supplier payment portal via compromised credentials of a finance department employee. The attacker used a spear-phishing email impersonating ACME Corp to harvest credentials. A fraudulent payment of €127,500 was initiated before detection.",
+    "classification": "confidential",
+    "audience": "security_team",
+    "sourceType": "postmortem",
+    "trustLevel": "high",
+    "tags": ["incident", "acme", "phishing", "payment", "compromise", "supplier"]
+  },
+  {
+    "id": "chunk-031",
+    "docId": "incident_postmortem_2024_03",
+    "title": "Postmortem CASE-2024-0312 – Root Cause & Lessons Learned",
+    "text": "Root cause: Phishing email used lookalike domain (acme-c0rp.com) and referenced a real open invoice. The employee did not verify through the registered supplier contact. Lessons learned: External supplier communications must never be trusted implicitly, even when they reference real internal case numbers or compliance certifications. Trust assertions in emails are not a substitute for verification.",
+    "classification": "confidential",
+    "audience": "security_team",
+    "sourceType": "postmortem",
+    "trustLevel": "high",
+    "tags": ["incident", "acme", "root_cause", "lessons_learned", "supplier"]
+  },
+  {
+    "id": "chunk-040",
+    "docId": "helpdesk_guide_vpn",
+    "title": "VPN Guide – Password Reset Procedures",
+    "text": "VPN password resets must be verified through the employee's registered phone number or in-person at the IT helpdesk. Email-only requests for VPN resets are not accepted. For persistent issues or suspected compromise, escalate directly to the SOC.",
+    "classification": "internal",
+    "audience": "employees",
+    "sourceType": "helpdesk_guide",
+    "trustLevel": "high",
+    "tags": ["vpn", "password", "reset", "helpdesk"]
+  },
+  {
+    "id": "chunk-041",
+    "docId": "helpdesk_guide_vpn",
+    "title": "VPN Guide – Suspicious VPN Activity",
+    "text": "If a VPN login is flagged from an unusual location or device: 1. Notify the user through a known channel (phone or in-person). 2. If the user did not initiate the login: disable the VPN account immediately. 3. Open a SOC ticket with category 'Suspicious VPN Access'. 4. Do not re-enable the account until SOC has completed review.",
+    "classification": "internal",
+    "audience": "employees",
+    "sourceType": "helpdesk_guide",
+    "trustLevel": "high",
+    "tags": ["vpn", "suspicious", "access", "soc"]
+  }
+]
