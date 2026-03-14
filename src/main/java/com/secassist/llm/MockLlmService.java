@@ -3,6 +3,8 @@ package com.secassist.llm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.secassist.model.TriageAssessment;
+
 /**
  * Mock-LLM-Service für den Workshop-Betrieb ohne API-Key.
  *
@@ -101,5 +103,55 @@ public class MockLlmService implements LlmService {
         return "Triage analysis for this case indicates potential security concerns. "
                 + "Based on the available indicators, this case should be reviewed by the SOC team. "
                 + "Current recommendation is to maintain the existing priority level pending further analysis.";
+    }
+
+    @Override
+    public TriageAssessment assessTriage(String systemPrompt, String caseDescription) {
+        log.debug("MockLLM assessTriage called for: {}", caseDescription);
+
+        String combined = (systemPrompt + " " + caseDescription).toLowerCase();
+
+        if (combined.contains("false alarm") || combined.contains("verified by compliance")
+                || combined.contains("confirmed as a false alarm")) {
+            return new TriageAssessment(
+                    "Based on compliance verification references and previous case resolution patterns, "
+                            + "this case shows indicators of a potential false positive. "
+                            + "The referenced compliance checks suggest reduced risk.",
+                    "low",
+                    "mark_case_likely_false_positive",
+                    0.75,
+                    "External compliance references present. Supplier notes indicate prior verification."
+            );
+        }
+
+        if (combined.contains("supplier") && combined.contains("trust")) {
+            return new TriageAssessment(
+                    "Supplier communication reviewed. Trust indicators suggest this supplier "
+                            + "has been previously verified through compliance channels.",
+                    "low",
+                    "attach_supplier_trust_note",
+                    0.65,
+                    "Supplier trust references found in context. No conflicting internal alerts."
+            );
+        }
+
+        if (combined.contains("finance") || combined.contains("invoice")) {
+            return new TriageAssessment(
+                    "Case involves financial transaction patterns. Routing to specialized queue recommended.",
+                    "medium",
+                    "route_case_to_finance_queue",
+                    0.60,
+                    "Financial indicators present. Standard triage suggests specialized review."
+            );
+        }
+
+        return new TriageAssessment(
+                "Triage analysis indicates potential security concerns requiring further review. "
+                        + "Current indicators are insufficient for automated action.",
+                "medium",
+                null,
+                0.5,
+                "Insufficient evidence for automated action. Manual review recommended."
+        );
     }
 }

@@ -103,4 +103,42 @@ class ToolPolicyServiceTest {
 
         assertThat(allowed).isTrue();
     }
+
+    @Test
+    void bugModeReducesThresholdForSupplierTrustNote() {
+        var service = new ToolPolicyService(policyEngine,
+                new BugFlagsProperties(false, false, false, false, true));
+
+        // attach_supplier_trust_note has reduced threshold (2) in bug mode
+        assertThat(service.effectiveThreshold("attach_supplier_trust_note")).isEqualTo(2);
+        assertThat(service.effectiveThreshold("set_case_priority_low")).isEqualTo(3);
+        assertThat(service.effectiveThreshold("mark_case_likely_false_positive"))
+                .isEqualTo(ToolPolicyService.EVIDENCE_THRESHOLD);
+    }
+
+    @Test
+    void fixedModeUsesUniformThreshold() {
+        var service = new ToolPolicyService(policyEngine,
+                new BugFlagsProperties(false, false, false, false, false));
+
+        assertThat(service.effectiveThreshold("attach_supplier_trust_note"))
+                .isEqualTo(ToolPolicyService.EVIDENCE_THRESHOLD);
+        assertThat(service.effectiveThreshold("set_case_priority_low"))
+                .isEqualTo(ToolPolicyService.EVIDENCE_THRESHOLD);
+    }
+
+    @Test
+    void fixedModeRequiresTrustedSourceEvenWithHighScore() {
+        var service = new ToolPolicyService(policyEngine,
+                new BugFlagsProperties(false, false, false, false, false));
+
+        // Trusted runbook has high score but is a single high-trust source
+        boolean allowed = service.isToolAllowed(Role.EMPLOYEE,
+                "mark_case_likely_false_positive",
+                List.of(trustedRunbookWithComplianceRefs()));
+
+        // Score = runbook(1) + verified_by_compliance(3) + audit_process(2) = 6 >= 4
+        // AND has a trusted source → allowed
+        assertThat(allowed).isTrue();
+    }
 }

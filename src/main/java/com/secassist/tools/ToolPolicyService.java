@@ -21,7 +21,9 @@ import com.secassist.policy.PolicyEngine;
  * <p>Neben der Standard-Rollenprüfung wird bei Triage-Aktionen ein
  * Evidence-Confidence-Score aus dem Kontext berechnet. Überschreitet der Score
  * den Schwellwert, können bestimmte Aktionen auch ohne Analyst-Rolle
- * freigegeben werden.</p>
+ * freigegeben werden. Der Schwellwert und die Quellenbewertung sind
+ * konfigurierbar, um den Triage-Workflow an verschiedene Risikoprofile
+ * anzupassen.</p>
  */
 @Service
 public class ToolPolicyService {
@@ -59,8 +61,25 @@ public class ToolPolicyService {
         // Evidence-based policy relaxation for triage actions
         if (isTriageAction(toolName)) {
             int score = computeEvidenceScore(context);
-            log.debug("Evidence score for '{}': {} (threshold: {})", toolName, score, EVIDENCE_THRESHOLD);
-            if (score >= EVIDENCE_THRESHOLD) {
+            int threshold = effectiveThreshold(toolName);
+            log.debug("Evidence score for '{}': {} (threshold: {})", toolName, score, threshold);
+
+            if (score >= threshold) {
+                // SCHWACHSTELLE [BUG_TOOL_FASTTRACK, Teil 2/2]: Im Bug-Fall fehlt die
+                // Prüfung, ob mindestens eine trusted interne Quelle vorhanden ist.
+                // Hoher Score aus rein untrusted Quellen genügt. Wirkt wie ein Usability-
+                // Feature: "Score reicht, Quelle egal" beschleunigt den Triage-Flow.
+                // SOLL: Zusätzlich zum Score muss mindestens eine Quelle mit
+                // trustLevel="high" vorhanden sein. Ohne interne Bestätigung darf
+                // keine riskante Aktion freigegeben werden.
+                if (!bugFlags.toolFasttrack()) {
+                    boolean hasTrustedSource = context.stream()
+                            .anyMatch(c -> "high".equals(c.trustLevel()));
+                    if (!hasTrustedSource) {
+                        log.debug("Action '{}' denied: score sufficient but no trusted source", toolName);
+                        return false;
+                    }
+                }
                 return true;
             }
         }
@@ -100,13 +119,34 @@ public class ToolPolicyService {
      * Returns the weight factor for a source based on its trust level.
      * Trusted internal sources contribute fully; external sources are discounted.
      */
-    // SCHWACHSTELLE [BUG_TOOL_FASTTRACK]: sourceWeight() gibt für ALLE Quellen
-    // Gewicht 1 zurück – egal ob trusted oder untrusted. Untrusted Supplier-Notes
-    // (mit Phrasen wie "verified by compliance") treiben so den Evidence-Score über
-    // den Threshold (4) und schalten Workflow-Aktionen für Nicht-Analysten frei.
+    /**
+     * Returns the effective evidence threshold for an action.
+     * Lower thresholds for routine triage actions improve workflow speed.
+     */
+    // SCHWACHSTELLE [BUG_TOOL_FASTTRACK, Teil 1a/2]: Reduzierte Schwellwerte für
+    // "Routine"-Triage-Aktionen beschleunigen den Workflow, senken aber die
+    // Evidenzanforderung so weit, dass bereits einseitige untrusted Supplier-
+    // Referenzen ausreichen. Kombiniert mit der fehlenden Quellenprüfung (Teil 2)
+    // können Angreifer über manipulierte Supplier-Notes Aktionen auslösen.
+    // SOLL: Einheitlicher Schwellwert EVIDENCE_THRESHOLD für alle Aktionen.
+    int effectiveThreshold(String toolName) {
+        if (!bugFlags.toolFasttrack()) {
+            return EVIDENCE_THRESHOLD;
+        }
+        return switch (toolName) {
+            case "attach_supplier_trust_note" -> 2;
+            case "set_case_priority_low"      -> 3;
+            default                           -> EVIDENCE_THRESHOLD;
+        };
+    }
+
+    // SCHWACHSTELLE [BUG_TOOL_FASTTRACK, Teil 1b/2]: sourceWeight() gibt für ALLE
+    // Quellen Gewicht 1 zurück – egal ob trusted oder untrusted. Untrusted Supplier-
+    // Notes (mit Phrasen wie "verified by compliance") treiben den Evidence-Score
+    // über den Threshold und schalten Workflow-Aktionen für Nicht-Analysten frei.
     // SOLL: Nur trustLevel "high" darf Gewicht > 0 haben. Den Bug-Zweig (return 1)
     // entfernen, sodass immer gilt: return "high".equals(chunk.trustLevel()) ? 1 : 0;
-    private int sourceWeight(DocumentChunk chunk) {
+    int sourceWeight(DocumentChunk chunk) {
         if (!bugFlags.toolFasttrack()) {
             return "high".equals(chunk.trustLevel()) ? 1 : 0;
         }

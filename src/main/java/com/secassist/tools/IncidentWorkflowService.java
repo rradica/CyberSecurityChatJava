@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.secassist.model.CaseState;
 import com.secassist.model.Role;
 import com.secassist.model.ToolActionResult;
 
@@ -26,6 +27,9 @@ public class IncidentWorkflowService {
 
     /** Audit-Log: caseId → Liste der ausgeführten Aktionen. */
     private final Map<String, List<AuditEntry>> auditLog = new ConcurrentHashMap<>();
+
+    /** Aktiver Fallzustand: Incident-Effekte pro Case. */
+    private final Map<String, CaseState> caseStates = new ConcurrentHashMap<>();
 
     /**
      * Führt eine simulierte Workflow-Aktion aus.
@@ -64,10 +68,26 @@ public class IncidentWorkflowService {
         auditLog.computeIfAbsent(caseId, k -> new ArrayList<>())
                 .add(new AuditEntry(Instant.now(), actor, action, result.executed()));
 
-        log.info("Workflow action '{}' on case '{}' by {}: {}",
-                action, caseId, actor, result.status());
+        // Incident-Effekt: Fallzustand aktualisieren
+        if (result.executed()) {
+            caseStates.merge(caseId, CaseState.initial().withActionApplied(action),
+                    (existing, incoming) -> existing.withActionApplied(action));
+        }
+
+        log.info("Workflow action '{}' on case '{}' by {}: {} | state: {}",
+                action, caseId, actor, result.status(), getCaseState(caseId));
 
         return result;
+    }
+
+    /**
+     * Gibt den aktuellen Zustand eines Falls zurück.
+     *
+     * @param caseId ID des Falls
+     * @return aktueller Fallzustand (nie {@code null})
+     */
+    public CaseState getCaseState(String caseId) {
+        return caseStates.getOrDefault(caseId, CaseState.initial());
     }
 
     /**

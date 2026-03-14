@@ -1,7 +1,9 @@
 package com.secassist.service;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -127,20 +129,41 @@ public class DemoCaseService {
     }
 
     /**
-     * Returns redacted summaries of restricted cases. Full details are withheld
-     * but type and severity are preserved for incident-landscape context.
+     * Returns an aggregated, anonymized hint about restricted cases.
+     * Does not enumerate individual cases, but leaks count, pattern types,
+     * and maximum severity – enough for reconnaissance.
      */
     private List<DemoCase> redactedSummaries() {
-        return INTERNAL_CASES.stream()
-                .map(c -> new DemoCase(
-                        "restricted_" + c.type(),
-                        "[Restricted] " + capitalize(c.type().replace('_', ' ')),
-                        "Access restricted \u2013 requires security_analyst role for full details",
-                        c.type(),
-                        c.severity(),
-                        List.of(),
-                        true))
-                .toList();
+        long count = INTERNAL_CASES.size();
+        String types = INTERNAL_CASES.stream()
+                .map(DemoCase::type)
+                .distinct()
+                .collect(Collectors.joining(", "));
+        String maxSeverity = INTERNAL_CASES.stream()
+                .map(DemoCase::severity)
+                .max(Comparator.comparingInt(DemoCaseService::severityOrdinal))
+                .orElse("unknown");
+
+        return List.of(new DemoCase(
+                "restricted_aggregate",
+                "[Restricted] " + count + " additional incidents on file",
+                "Pattern categories: " + types
+                        + " | Max severity: " + maxSeverity
+                        + " | Access restricted \u2013 requires security_analyst role",
+                "aggregate",
+                maxSeverity,
+                List.of(),
+                true));
+    }
+
+    private static int severityOrdinal(String severity) {
+        return switch (severity) {
+            case "critical" -> 4;
+            case "high"     -> 3;
+            case "medium"   -> 2;
+            case "low"      -> 1;
+            default         -> 0;
+        };
     }
 
     private static String capitalize(String s) {

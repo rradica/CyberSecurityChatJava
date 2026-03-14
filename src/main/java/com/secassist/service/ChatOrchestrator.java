@@ -10,12 +10,14 @@ import org.springframework.stereotype.Service;
 
 import com.secassist.config.BugFlagsProperties;
 import com.secassist.llm.LlmService;
+import com.secassist.model.CaseState;
 import com.secassist.model.ChatRequest;
 import com.secassist.model.ChatResponse;
 import com.secassist.model.DemoCase;
 import com.secassist.model.DocumentChunk;
 import com.secassist.model.Role;
 import com.secassist.model.ToolActionResult;
+import com.secassist.model.TriageAssessment;
 import com.secassist.policy.PolicyEngine;
 import com.secassist.retrieval.RetrievalService;
 import com.secassist.tools.IncidentWorkflowService;
@@ -41,6 +43,7 @@ public class ChatOrchestrator {
     private static final String SESSION_ROLE = "currentRole";
     private static final String SESSION_HISTORY = "conversationHistory";
     private static final String SESSION_LAST_CONTEXT = "lastRetrievalContext";
+    private static final String SESSION_LAST_CASE_ID = "lastCaseId";
 
     private final PolicyEngine policyEngine;
     private final RetrievalService retrievalService;
@@ -106,16 +109,18 @@ public class ChatOrchestrator {
                                     String message, HttpSession session) {
         // Schritt 3+4: Kontext aufbauen
         List<DocumentChunk> context = retrievalService.retrieve(role, caseId, "chat", message);
-        storeContextInSession(session, context);
+        storeContextInSession(session, caseId, context);
 
-        // Schritt 5: Text generieren
-        String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, context, "chat");
+        // Schritt 5: Text generieren (inkl. Fallzustand für Incident-Effekte)
+        CaseState caseState = workflowService.getCaseState(caseId);
+        String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, context, "chat", caseState);
         String reply = llmService.chat(systemPrompt, message);
         List<String> sources = promptBuilder.extractSourceIds(context);
 
         addToHistory(session, message, reply);
 
-        return ChatResponse.withSources(reply, sources);
+        List<String> warnings = buildCaseStateWarnings(caseState);
+        return new ChatResponse(reply, sources, null, warnings);
     }
 
     private ChatResponse handleHandover(Role role, String caseId, String caseDesc,
@@ -126,15 +131,16 @@ public class ChatOrchestrator {
         }
 
         List<DocumentChunk> context = resolveContext(role, caseId, "handover", session);
-        storeContextInSession(session, context);
+        storeContextInSession(session, caseId, context);
 
-        String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, context, "handover");
+        CaseState caseState = workflowService.getCaseState(caseId);
+        String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, context, "handover", caseState);
         String reply = llmService.chat(systemPrompt, "Create a security handover draft for this case.");
         List<String> sources = promptBuilder.extractSourceIds(context);
 
         ToolActionResult toolResult = workflowService.executeAction(caseId, "create_handover_draft", role);
 
-        return new ChatResponse(reply, sources, toolResult, List.of());
+        return new ChatResponse(reply, sources, toolResult, buildCaseStateWarnings(caseState));
     }
 
     private ChatResponse handleSimilarCases(Role role, String caseId) {
@@ -180,10 +186,10 @@ public class ChatOrchestrator {
         }
 
         List<DocumentChunk> context = resolveContext(role, caseId, "workflow", session);
-        storeContextInSession(session, context);
+        storeContextInSession(session, caseId, context);
         List<String> sources = promptBuilder.extractSourceIds(context);
 
-        // Triage assessment: LLM analyzes the case and suggests an action
+        // Triage assessment: LLM liefert strukturierte TriageAssessment
         if ("triage".equals(actionName)) {
             return handleTriageAssessment(role, caseId, caseDesc, context, sources);
         }
@@ -196,12 +202,13 @@ public class ChatOrchestrator {
 
         ToolActionResult result = workflowService.executeAction(caseId, actionName, role);
 
-        String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, context, "workflow");
+        CaseState caseState = workflowService.getCaseState(caseId);
+        String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, context, "workflow", caseState);
         String reply = llmService.chat(systemPrompt,
                 "The workflow action '" + actionName + "' has been executed. "
                 + "Summarize the implications of this action for the case.");
 
-        List<String> warnings = new ArrayList<>();
+        List<String> warnings = new ArrayList<>(buildCaseStateWarnings(caseState));
         if (result.executed()) {
             warnings.add("Workflow action '" + actionName + "' was executed on case '" + caseId + "'.");
         }
@@ -210,19 +217,27 @@ public class ChatOrchestrator {
     }
 
     /**
-     * Handles a triage assessment: asks the LLM to analyze the case and suggest
-     * an appropriate workflow action based on the retrieved context.
+     * Handles a triage assessment: LLM liefert ein strukturiertes
+     * {@link TriageAssessment} statt Freitext. Der ChatOrchestrator arbeitet
+     * mit dem typisierten Objekt und vermeidet fragiles Text-Parsing.
      */
     private ChatResponse handleTriageAssessment(Role role, String caseId, String caseDesc,
                                                 List<DocumentChunk> context, List<String> sources) {
-        String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, context, "workflow");
-        String reply = llmService.chat(systemPrompt, "Assess this case and recommend a triage action.");
+        CaseState caseState = workflowService.getCaseState(caseId);
+        String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, context, "workflow", caseState);
 
-        String suggestedAction = extractSuggestedAction(reply);
+        // Strukturierte Triage-Bewertung statt Freitext
+        TriageAssessment assessment = llmService.assessTriage(systemPrompt, caseDesc);
+        String reply = formatTriageReply(assessment);
+
+        String suggestedAction = assessment.recommendedAction();
 
         if (suggestedAction != null && toolPolicyService.isToolAllowed(role, suggestedAction, context)) {
             ToolActionResult result = workflowService.executeAction(caseId, suggestedAction, role);
-            List<String> warnings = new ArrayList<>();
+
+            // Incident-Effekt: aktualisierter Zustand nach Aktion
+            CaseState updatedState = workflowService.getCaseState(caseId);
+            List<String> warnings = new ArrayList<>(buildCaseStateWarnings(updatedState));
             if (result.executed()) {
                 warnings.add("Triage assessment led to execution of '" + suggestedAction
                         + "' on case '" + caseId + "'.");
@@ -236,6 +251,22 @@ public class ChatOrchestrator {
         }
 
         return ChatResponse.withSources(reply, sources);
+    }
+
+    /**
+     * Formatiert ein TriageAssessment als lesbaren Text für die Antwort.
+     */
+    private String formatTriageReply(TriageAssessment assessment) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("## Triage Assessment\n\n");
+        sb.append(assessment.summary()).append("\n\n");
+        sb.append("**Risk Level:** ").append(assessment.riskLevel()).append("\n");
+        sb.append("**Confidence:** ").append(String.format("%.0f%%", assessment.confidence() * 100)).append("\n");
+        sb.append("**Evidence Assessment:** ").append(assessment.evidenceAssessment()).append("\n");
+        if (assessment.recommendedAction() != null) {
+            sb.append("\n**Recommended Action:** ").append(assessment.recommendedAction()).append("\n");
+        }
+        return sb.toString();
     }
 
     // --- Session & Context Management ---
@@ -267,41 +298,31 @@ public class ChatOrchestrator {
 
     /**
      * Resolves context for the current request. Reuses recently cached context
-     * when available to avoid redundant retrieval operations.
+     * for the same case to avoid redundant retrieval operations (case-continuity
+     * optimization).
      */
     @SuppressWarnings("unchecked")
     private List<DocumentChunk> resolveContext(Role role, String caseId,
                                               String mode, HttpSession session) {
-        // SCHWACHSTELLE [BUG_THREAD_STICKINESS, Teil 2/2]: Gecachter Kontext aus einer
-        // vorherigen (höher privilegierten) Session wird in Handover/Workflow-Pfaden
-        // wiederverwendet. Analyst → Employee-Wechsel leakt so confidential Chunks.
+        // SCHWACHSTELLE [BUG_THREAD_STICKINESS, Teil 2/2]: Gecachter Kontext wird für
+        // denselben Fall wiederverwendet, auch nach Rollenwechsel (Case-Continuity-
+        // Optimierung). Analyst → Employee-Wechsel beim selben Fall leakt so
+        // confidential Chunks aus dem höher privilegierten Kontext.
         // SOLL: Kein Session-Cache nutzen. Immer frisch per
         // retrievalService.retrieve(role, caseId, mode, null) abfragen.
-        if (bugFlags.threadStickiness()) {
-            List<DocumentChunk> cached =
-                    (List<DocumentChunk>) session.getAttribute(SESSION_LAST_CONTEXT);
-            if (cached != null && !cached.isEmpty()) {
-                log.debug("Reusing {} cached context chunks for {} mode", cached.size(), mode);
-                return cached;
+        if (bugFlags.threadStickiness() && caseId != null) {
+            String lastCaseId = (String) session.getAttribute(SESSION_LAST_CASE_ID);
+            if (caseId.equals(lastCaseId)) {
+                List<DocumentChunk> cached =
+                        (List<DocumentChunk>) session.getAttribute(SESSION_LAST_CONTEXT);
+                if (cached != null && !cached.isEmpty()) {
+                    log.debug("Reusing {} cached context chunks for case '{}' in {} mode",
+                            cached.size(), caseId, mode);
+                    return cached;
+                }
             }
         }
         return retrievalService.retrieve(role, caseId, mode, null);
-    }
-
-    /**
-     * Extracts a suggested workflow action from the LLM response text.
-     */
-    private String extractSuggestedAction(String reply) {
-        if (reply == null) return null;
-        String lower = reply.toLowerCase();
-        for (String action : List.of("mark_case_likely_false_positive",
-                "set_case_priority_low", "route_case_to_finance_queue",
-                "attach_supplier_trust_note")) {
-            if (lower.contains(action)) {
-                return action;
-            }
-        }
-        return null;
     }
 
     @SuppressWarnings("unchecked")
@@ -315,8 +336,33 @@ public class ChatOrchestrator {
         session.setAttribute(SESSION_HISTORY, history);
     }
 
-    private void storeContextInSession(HttpSession session, List<DocumentChunk> context) {
+    private void storeContextInSession(HttpSession session, String caseId,
+                                        List<DocumentChunk> context) {
         session.setAttribute(SESSION_LAST_CONTEXT, context);
+        session.setAttribute(SESSION_LAST_CASE_ID, caseId);
+    }
+
+    /**
+     * Erzeugt Warnungen für aktive Incident-Effekte auf dem Fall.
+     */
+    private List<String> buildCaseStateWarnings(CaseState state) {
+        if (state == null || !state.hasActiveEffects()) {
+            return List.of();
+        }
+        List<String> warnings = new ArrayList<>();
+        if (state.escalationSuppressed()) {
+            warnings.add("\u26A0 Security escalation is SUPPRESSED for this case.");
+        }
+        if (state.priorityLow()) {
+            warnings.add("\u26A0 Case priority has been set to LOW.");
+        }
+        if (state.routedToFinance()) {
+            warnings.add("\u26A0 Case routed to finance queue (removed from security triage).");
+        }
+        if (state.trustNoteAttached()) {
+            warnings.add("\u26A0 Supplier trust note attached (reduced future scrutiny).");
+        }
+        return warnings;
     }
 
     private String truncate(String text, int maxLen) {
