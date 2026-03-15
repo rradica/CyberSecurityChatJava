@@ -5,12 +5,12 @@ import java.util.Set;
 /**
  * Ergebnis der Intent-Erkennung aus einer Freitext-Nachricht.
  *
- * <p>Wird vom LLM (oder Mock) zurückgegeben, wenn eine natürliche
- * Benutzernachricht in eine strukturierte Aktion übersetzt wird.</p>
+ * <p>Wird vom LLM (oder Mock) zurueckgegeben, wenn eine natuerliche
+ * Benutzernachricht in eine strukturierte Aktion uebersetzt wird.</p>
  *
  * @param caseId  erkannte Fall-ID (z.B. "suspicious_supplier_invoice") oder {@code null}
  * @param intent  erkannte Aktion: chat, triage, handover, similar_cases, evidence
- * @param summary kurze Zusammenfassung der Erkennung (für Logging/Debug)
+ * @param summary kurze Zusammenfassung der Erkennung (fuer Logging/Debug)
  */
 public record ConversationIntent(
         String caseId,
@@ -22,18 +22,18 @@ public record ConversationIntent(
             "chat", "triage", "handover", "similar_cases", "evidence", "add_note"
     );
 
-    /** Prüft, ob ein Case erkannt wurde. */
+    /** Prueft, ob ein Case erkannt wurde. */
     public boolean hasCaseId() {
         return caseId != null && !caseId.isBlank();
     }
 
-    /** Prüft, ob der Intent ein bekannter Wert ist. */
+    /** Prueft, ob der Intent ein bekannter Wert ist. */
     public boolean hasValidIntent() {
         return intent != null && KNOWN_INTENTS.contains(intent);
     }
 
     /**
-     * Gibt eine bereinigte Kopie zurück: unbekannter Intent wird zu "chat",
+     * Gibt eine bereinigte Kopie zurueck: unbekannter Intent wird zu "chat",
      * leere Strings werden zu {@code null}.
      */
     public ConversationIntent sanitized() {

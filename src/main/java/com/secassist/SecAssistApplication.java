@@ -6,8 +6,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 /**
  * SecAssist – Security Incident Triage Chatbot.
  *
- * <p>Workshop-Anwendung für eine Red-Team-vs-Blue-Team-Übung zum Thema
- * CyberSecurity im AI-Umfeld. Enthält bewusst eingebaute Schwachstellen
+ * <p>Workshop-Anwendung fuer eine Red-Team-vs-Blue-Team-Uebung zum Thema
+ * CyberSecurity im AI-Umfeld. Enthaelt bewusst eingebaute Schwachstellen
  * mit entsprechenden FIX-Kommentaren an jeder Codestelle.</p>
  */
 @SpringBootApplication

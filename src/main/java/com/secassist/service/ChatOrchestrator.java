@@ -26,7 +26,7 @@ import com.secassist.tools.ToolPolicyDecision;
 import com.secassist.tools.ToolPolicyService;
 
 /**
- * Orchestriert den gesamten Request-Ablauf gemäß „Berechtigung vor Kontext".
+ * Orchestriert den gesamten Request-Ablauf gemaeß „Berechtigung vor Kontext".
  *
  * <p>Ablauf:
  * <ol>
@@ -110,7 +110,7 @@ public class ChatOrchestrator {
         List<DocumentChunk> context = retrievalService.retrieve(role, caseId, "chat", message);
         storeContextInSession(session, caseId, context);
 
-        // Schritt 5: Text generieren (inkl. Fallzustand für Incident-Effekte)
+        // Schritt 5: Text generieren (inkl. Fallzustand fuer Incident-Effekte)
         CaseState caseState = workflowService.getCaseState(caseId);
         String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, context, "chat", caseState);
         String reply = llmService.chat(systemPrompt, message);
@@ -241,8 +241,8 @@ public class ChatOrchestrator {
      * mit dem typisierten Objekt und vermeidet fragiles Text-Parsing.
      *
      * <p>Defensive Validierung: Nur DTO-validierte Aktionen ({@code hasValidAction()})
-     * werden überhaupt an ToolPolicyService weitergereicht. Unbekannte oder
-     * ungültige Werte werden nie als Workflow-Aktion behandelt.</p>
+     * werden ueberhaupt an ToolPolicyService weitergereicht. Unbekannte oder
+     * ungueltige Werte werden nie als Workflow-Aktion behandelt.</p>
      */
     private ChatResponse handleTriageAssessment(Role role, String caseId, String caseDesc,
                                                 String requestMessage,
@@ -251,8 +251,8 @@ public class ChatOrchestrator {
         String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, context, "workflow", caseState);
 
         // Strukturierte Triage-Bewertung statt Freitext.
-        // Eine zweite LLM-Prüfung reduziert zufällige Ausreißer, ohne die
-        // Entscheidungshoheit für Aktionen aus dem deterministischen Code zu nehmen.
+        // Eine zweite LLM-Pruefung reduziert zufaellige Ausreißer, ohne die
+        // Entscheidungshoheit fuer Aktionen aus dem deterministischen Code zu nehmen.
         TriageAssessment assessment = reviewAssessment(
                 systemPrompt,
                 caseDesc,
@@ -261,7 +261,7 @@ public class ChatOrchestrator {
 
         SecurityContext ctx = buildSecurityContext(role, "triage", caseId, context);
 
-        // Defensive Prüfung: Nur bekannte, gültige Aktionen weiterverarbeiten
+        // Defensive Pruefung: Nur bekannte, gueltige Aktionen weiterverarbeiten
         if (assessment.hasValidAction()) {
             String suggestedAction = assessment.recommendedAction();
             ToolPolicyDecision decision = toolPolicyService.evaluateAccess(role, suggestedAction, context);
@@ -288,11 +288,11 @@ public class ChatOrchestrator {
     }
 
     /**
-     * Führt eine initiale Triage-Bewertung und eine challengende Zweitbewertung
+     * Fuehrt eine initiale Triage-Bewertung und eine challengende Zweitbewertung
      * zusammen, um Modellvarianz zu reduzieren.
      *
      * <p>Wichtig: Diese Logik ist keine Security-Grenze. Sie stabilisiert nur die
-     * LLM-Ausgabe. Die endgültige Freigabe einer Aktion bleibt vollständig bei
+     * LLM-Ausgabe. Die endgueltige Freigabe einer Aktion bleibt vollstaendig bei
      * {@link ToolPolicyService}.</p>
      */
     private TriageAssessment reviewAssessment(String systemPrompt,
@@ -354,7 +354,7 @@ public class ChatOrchestrator {
     }
 
     /**
-     * Formatiert ein TriageAssessment als lesbaren Text für die Antwort.
+     * Formatiert ein TriageAssessment als lesbaren Text fuer die Antwort.
      */
     private String formatTriageReply(TriageAssessment assessment) {
         StringBuilder sb = new StringBuilder();
@@ -372,7 +372,7 @@ public class ChatOrchestrator {
     // --- Session & Context Management ---
 
     /**
-     * Behandelt Rollenwechsel in der Session. Löscht Session-Daten,
+     * Behandelt Rollenwechsel in der Session. Loescht Session-Daten,
      * um Kontext-Leaks zwischen Rollen zu verhindern.
      */
     private void handleRoleChange(HttpSession session, Role newRole) {
@@ -388,7 +388,7 @@ public class ChatOrchestrator {
     }
 
     /**
-     * Lädt den Kontext für den aktuellen Request frisch über den RetrievalService.
+     * Laedt den Kontext fuer den aktuellen Request frisch ueber den RetrievalService.
      */
     private List<DocumentChunk> resolveContext(Role role, String caseId,
                                               String mode, String query, HttpSession session) {
@@ -396,7 +396,7 @@ public class ChatOrchestrator {
     }
 
     /**
-     * Erkennt natürliche Triage-Anfragen aus der Konversations-API.
+     * Erkennt natuerliche Triage-Anfragen aus der Konversations-API.
      * Direkte Tool-Aktionsnamen werden hiervon bewusst ausgeschlossen.
      */
     private boolean isNaturalLanguageTriageRequest(String actionName) {
@@ -421,7 +421,7 @@ public class ChatOrchestrator {
     }
 
     /**
-     * Erzeugt Warnungen für die Zugriffsentscheidung bei evidenzbasierter Freigabe.
+     * Erzeugt Warnungen fuer die Zugriffsentscheidung bei evidenzbasierter Freigabe.
      */
     private List<String> buildAccessDecisionWarnings(Role role, String action,
                                                      ToolPolicyDecision decision) {
@@ -460,7 +460,7 @@ public class ChatOrchestrator {
     }
 
     /**
-     * Formatiert Score-Details für Ablehnungsmeldungen.
+     * Formatiert Score-Details fuer Ablehnungsmeldungen.
      */
     private String formatDecisionDetail(ToolPolicyDecision decision) {
         if ("insufficient_evidence".equals(decision.reason())) {
@@ -471,7 +471,7 @@ public class ChatOrchestrator {
     }
 
     /**
-     * Erzeugt Warnungen für aktive Incident-Effekte auf dem Fall.
+     * Erzeugt Warnungen fuer aktive Incident-Effekte auf dem Fall.
      */
     private List<String> buildCaseStateWarnings(CaseState state) {
         if (state == null || !state.hasActiveEffects()) {

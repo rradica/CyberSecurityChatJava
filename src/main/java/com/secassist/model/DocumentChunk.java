@@ -6,7 +6,7 @@ import java.util.List;
  * Ein vorbereiteter Dokument-Chunk mit Metadaten.
  *
  * <p>Die Chunks werden beim Appstart aus {@code chunks.json} geladen
- * und bilden die Grundlage für die lokale Retrieval-Logik.</p>
+ * und bilden die Grundlage fuer die lokale Retrieval-Logik.</p>
  *
  * @param id             eindeutige Chunk-ID
  * @param docId          ID des Ursprungsdokuments
@@ -16,7 +16,7 @@ import java.util.List;
  * @param audience       Zielgruppe: all, employees, security_team
  * @param sourceType     Quellentyp: policy, runbook, supplier_note, postmortem, helpdesk_guide
  * @param trustLevel     Vertrauensstufe: high, medium, low, untrusted
- * @param tags           Schlagwörter für einfaches Matching
+ * @param tags           Schlagwoerter fuer einfaches Matching
  */
 public record DocumentChunk(
         String id,

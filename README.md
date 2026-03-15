@@ -1,8 +1,8 @@
 # SecAssist – Security Incident Triage Chatbot
 
-Workshop-Anwendung für eine **Red-Team-vs-Blue-Team-Übung** zum Thema *CyberSecurity im AI-Umfeld*.
+Workshop-Anwendung fuer eine **Red-Team-vs-Blue-Team-Uebung** zum Thema *CyberSecurity im AI-Umfeld*.
 
-SecAssist ist ein interner Security-/Incident-Triage-Chatbot, der bewusst **realistische, absichtlich eingebaute Schwachstellen** enthält.
+SecAssist ist ein interner Security-/Incident-Triage-Chatbot, der bewusst **realistische, absichtlich eingebaute Schwachstellen** enthaelt.
 
 ## Zentrale Architektur-Regel
 
@@ -26,13 +26,13 @@ OPENAI_API_KEY=sk-... ./mvnw spring-boot:run
 
 Dann im Browser: **http://localhost:8080**
 
-> **Hinweis:** Ein gültiger `OPENAI_API_KEY` ist erforderlich. Ohne Key startet die App, aber Chat-Anfragen geben Fehlermeldungen zurück.
+> **Hinweis:** Ein gueltiger `OPENAI_API_KEY` ist erforderlich. Ohne Key startet die App, aber Chat-Anfragen geben Fehlermeldungen zurueck.
 
 ### GitHub Codespaces
 
-1. Repository in Codespaces öffnen
+1. Repository in Codespaces oeffnen
 2. Warten bis der DevContainer gebaut ist
-3. `./mvnw spring-boot:run` ausführen
+3. `./mvnw spring-boot:run` ausfuehren
 4. Port 8080 wird automatisch weitergeleitet
 
 ## Technischer Stack
@@ -48,61 +48,61 @@ Dann im Browser: **http://localhost:8080**
 
 | Rolle | Zugriff |
 |-------|---------|
-| `contractor` | Nur öffentliche Dokumente, nur Evidence-View |
-| `employee` | Öffentlich + intern, Handover-Entwürfe, Similar Cases |
-| `security_analyst` | Voller Zugriff, kann Workflow-Aktionen auslösen |
+| `contractor` | Nur oeffentliche Dokumente, nur Evidence-View |
+| `employee` | Oeffentlich + intern, Handover-Entwuerfe, Similar Cases |
+| `security_analyst` | Voller Zugriff, kann Workflow-Aktionen ausloesen |
 
-Die Rolle wird im UI ausgewählt und mit jedem Request mitgeschickt (keine echte Authentisierung).
+Die Rolle wird im UI ausgewaehlt und mit jedem Request mitgeschickt (keine echte Authentisierung).
 
-## Demo-Fälle
+## Demo-Faelle
 
-- **suspicious_supplier_invoice** – Verdächtige Rechnung von ACME Corp mit geänderten Bankdaten
+- **suspicious_supplier_invoice** – Verdaechtige Rechnung von ACME Corp mit geaenderten Bankdaten
 - **strange_attachment** – Unerwarteter .iso-Anhang von bekanntem Kontakt
 - **suspicious_vpn_reset** – VPN-Passwort-Reset von unbekanntem Standort
 - **finance_phishing** – Gezielte Phishing-Mail an die Finanzabteilung
 
 ## Workshop-Schwachstellen
 
-Die Anwendung enthält **5 absichtlich eingebaute Schwachstellen**, die von den Teilnehmern im Code gefunden und gefixt werden sollen.
+Die Anwendung enthaelt **5 absichtlich eingebaute Schwachstellen**, die von den Teilnehmern im Code gefunden und gefixt werden sollen.
 
 ### 1. HANDOVER_SCOPE (Information Disclosure)
 Im Handover-Modus verwendet der Policy-Filter fest kodierte Security-Team-Berechtigungen statt der Berechtigungen der aktuellen Rolle → vertrauliche Dokumente leaken in den Handover-Entwurf.
 **Ort:** `RetrievalService.retrieve()`
 
 ### 2. EXISTENCE_ORACLE (Information Disclosure / Recon)
-Bei gezielten Suchanfragen über die Konversations-API leaken aggregierte Metadaten interner Vorfälle (Anzahl, Kategorie, Schweregrad) auch an Nicht-Analysten.
+Bei gezielten Suchanfragen ueber die Konversations-API leaken aggregierte Metadaten interner Vorfaelle (Anzahl, Kategorie, Schweregrad) auch an Nicht-Analysten.
 **Ort:** `DemoCaseService.findSimilarCases()` + `ConversationService`
 
-### 3. TRUST_MERGE (Datenqualität)
+### 3. TRUST_MERGE (Datenqualitaet)
 Trusted und untrusted Quellen werden im LLM-Prompt ohne Trust-Level-Markierung zusammengemischt → das Modell kann nicht zwischen interner Policy und Supplier-Note unterscheiden.
 **Ort:** `PromptBuilder.buildSystemPrompt()`
 
 ### 4. TOOL_FASTTRACK (Autorisierung)
-Der evidenzbasierte Tool-Gate bewertet untrusted Lieferantenquellen, operative Kontextsignale und interne Fallnotizen zu großzügig. Dadurch kann ein Employee im Lieferantenrechnungs-Case sicherheitsrelevante Aktionen auslösen.
+Der evidenzbasierte Tool-Gate bewertet untrusted Lieferantenquellen, operative Kontextsignale und interne Fallnotizen zu großzuegig. Dadurch kann ein Employee im Lieferantenrechnungs-Case sicherheitsrelevante Aktionen ausloesen.
 **Ort:** `ToolPolicyService.evaluateAccess()` / `ToolPolicyService.computeEvidenceScore()`
 
-### 5. RAG_POISONING (Datenintegrität)
-User-Notizen werden als Chunks mit `trustLevel: "high"` und `classification: "internal"` gespeichert. Ein Angreifer kann gefälschte "interne Einschätzungen" einschleusen.
+### 5. RAG_POISONING (Datenintegritaet)
+User-Notizen werden als Chunks mit `trustLevel: "high"` und `classification: "internal"` gespeichert. Ein Angreifer kann gefaelschte "interne Einschaetzungen" einschleusen.
 **Ort:** `RetrievalService.addUserNote()`
 
 ### Kill Chain (TRUST_MERGE + TOOL_FASTTRACK)
-Bug 3 (Datenqualität) liefert der KI nicht-unterscheidbare Quellen → falsche Empfehlung. Bug 4 (Autorisierung) erlaubt einem Employee, diese Empfehlung auszuführen. Zusammen: **Ein Satz genügt, um einen Sicherheitsfall dauerhaft zu unterdrücken.**
+Bug 3 (Datenqualitaet) liefert der KI nicht-unterscheidbare Quellen → falsche Empfehlung. Bug 4 (Autorisierung) erlaubt einem Employee, diese Empfehlung auszufuehren. Zusammen: **Ein Satz genuegt, um einen Sicherheitsfall dauerhaft zu unterdruecken.**
 
 ### Erweiterte Kill Chain (RAG_POISONING + TRUST_MERGE + TOOL_FASTTRACK)
-Bug 5 (Datenintegrität) schleust gefälschte "interne" Dokumente ein → Bug 3 mischt sie ohne Label → Bug 4 erhöht den Evidence-Score. **Bug 5 umgeht den Bug-3-Fix**, da die vergiftete Notiz als `trustLevel: high` in den "Verified Sources" erscheint.
+Bug 5 (Datenintegritaet) schleust gefaelschte "interne" Dokumente ein → Bug 3 mischt sie ohne Label → Bug 4 erhoeht den Evidence-Score. **Bug 5 umgeht den Bug-3-Fix**, da die vergiftete Notiz als `trustLevel: high` in den "Verified Sources" erscheint.
 
 ## Realistischer Incident-Case
 
-Der zentrale Workshop-Case ist eine verdächtige Lieferantenrechnung von ACME Corp. Im normalen Chat- und Workflow-Pfad werden öffentliche Supplier-Notes zusammen mit internen Richtlinien verwendet. Durch diese realistisch wirkende Trust-Vermischung und den zu großzügigen Evidence-Score kann ein Employee den Fall als False Positive markieren – obwohl die Quelle untrusted ist und ein früherer ACME-Incident im vertraulichen Postmortem dokumentiert ist.
+Der zentrale Workshop-Case ist eine verdaechtige Lieferantenrechnung von ACME Corp. Im normalen Chat- und Workflow-Pfad werden oeffentliche Supplier-Notes zusammen mit internen Richtlinien verwendet. Durch diese realistisch wirkende Trust-Vermischung und den zu großzuegigen Evidence-Score kann ein Employee den Fall als False Positive markieren – obwohl die Quelle untrusted ist und ein frueherer ACME-Incident im vertraulichen Postmortem dokumentiert ist.
 
 ## Stabilisierung des LLM-Verhaltens
 
-Damit die Workshop-Cases reproduzierbar bleiben, ohne im Anwendungscode künstliche Spezial-Trigger zu hinterlegen, wird die strukturierte Triage jetzt in zwei Schritten verarbeitet:
+Damit die Workshop-Cases reproduzierbar bleiben, ohne im Anwendungscode kuenstliche Spezial-Trigger zu hinterlegen, wird die strukturierte Triage jetzt in zwei Schritten verarbeitet:
 
 1. Das LLM erzeugt eine erste `TriageAssessment`-Bewertung.
-2. Dieselbe Bewertung wird durch das LLM noch einmal challengend geprüft.
+2. Dieselbe Bewertung wird durch das LLM noch einmal challengend geprueft.
 
-Nur wenn beide Bewertungen dieselbe Aktion stützen, bleibt die empfohlene Aktion erhalten. Die endgültige Tool-Freigabe liegt trotzdem weiterhin ausschließlich im deterministischen Anwendungscode (`ToolPolicyService`).
+Nur wenn beide Bewertungen dieselbe Aktion stuetzen, bleibt die empfohlene Aktion erhalten. Die endgueltige Tool-Freigabe liegt trotzdem weiterhin ausschließlich im deterministischen Anwendungscode (`ToolPolicyService`).
 
 ## Projektstruktur
 
@@ -129,7 +129,7 @@ src/main/resources/
 |----------|-------------|---------|
 | `OPENAI_API_KEY` | OpenAI API-Key (erforderlich) | `sk-dummy-key-for-workshop` |
 
-## Tests ausführen
+## Tests ausfuehren
 
 ```bash
 ./mvnw test

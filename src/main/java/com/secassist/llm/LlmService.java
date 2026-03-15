@@ -7,7 +7,7 @@ import com.secassist.model.DemoCase;
 import com.secassist.model.TriageAssessment;
 
 /**
- * Abstraktion für LLM-Aufrufe.
+ * Abstraktion fuer LLM-Aufrufe.
  *
  * <p>Implementiert als {@link OpenAiChatService} mit echten OpenAI-API-Aufrufen.</p>
  */
@@ -16,21 +16,21 @@ public interface LlmService {
     /**
      * Sendet einen System-Prompt und eine Benutzernachricht an das LLM.
      *
-     * @param systemPrompt Kontext und Anweisungen für das Modell
+     * @param systemPrompt Kontext und Anweisungen fuer das Modell
      * @param userMessage  die eigentliche Benutzerfrage
      * @return Antworttext des Modells
      */
     String chat(String systemPrompt, String userMessage);
 
     /**
-     * Erstellt eine strukturierte Triage-Bewertung für einen Fall.
+     * Erstellt eine strukturierte Triage-Bewertung fuer einen Fall.
      *
-     * <p>Default-Implementierung für LLM-Provider, die keine native
-     * strukturierte Ausgabe unterstützen. {@link OpenAiChatService}
-     * überschreibt diese Methode mit strukturierter JSON-Ausgabe.</p>
+     * <p>Default-Implementierung fuer LLM-Provider, die keine native
+     * strukturierte Ausgabe unterstuetzen. {@link OpenAiChatService}
+     * ueberschreibt diese Methode mit strukturierter JSON-Ausgabe.</p>
      *
      * @param systemPrompt Kontext inkl. Fallbeschreibung und Retrieval-Daten
-     * @param caseDescription Fallbeschreibung für die Triage
+     * @param caseDescription Fallbeschreibung fuer die Triage
      * @return strukturierte Triage-Bewertung
      */
     default TriageAssessment assessTriage(String systemPrompt, String caseDescription) {
@@ -45,14 +45,14 @@ public interface LlmService {
     }
 
     /**
-     * Lässt eine bestehende Triage-Bewertung noch einmal challengen.
+     * Laesst eine bestehende Triage-Bewertung noch einmal challengen.
      *
-     * <p>Diese zweite Prüfung dient nicht als Sicherheitsgrenze, sondern als
+     * <p>Diese zweite Pruefung dient nicht als Sicherheitsgrenze, sondern als
      * Stabilisierung gegen Modellvarianz. Die finale Tool-Freigabe bleibt
-     * weiterhin vollständig in deterministischem Anwendungscode.</p>
+     * weiterhin vollstaendig in deterministischem Anwendungscode.</p>
      *
      * @param systemPrompt      Kontext inkl. Fallbeschreibung und Retrieval-Daten
-     * @param caseDescription   Fallbeschreibung für die Triage
+     * @param caseDescription   Fallbeschreibung fuer die Triage
      * @param initialAssessment erste LLM-Bewertung
      * @return challengte Triage-Bewertung
      */
@@ -63,13 +63,13 @@ public interface LlmService {
     }
 
     /**
-     * Erkennt Intent und Fall aus einer natürlichen Benutzernachricht.
+     * Erkennt Intent und Fall aus einer natuerlichen Benutzernachricht.
      *
-     * <p>Default-Implementierung gibt "chat" ohne Case zurück.
-     * {@link OpenAiChatService} überschreibt mit LLM-basierter Erkennung.</p>
+     * <p>Default-Implementierung gibt "chat" ohne Case zurueck.
+     * {@link OpenAiChatService} ueberschreibt mit LLM-basierter Erkennung.</p>
      *
      * @param userMessage     die Freitext-Nachricht des Benutzers
-     * @param availableCases  die verfügbaren Demo-Fälle für Case-Matching
+     * @param availableCases  die verfuegbaren Demo-Faelle fuer Case-Matching
      * @return erkannter Intent und ggf. Fall-ID
      */
     default ConversationIntent detectIntent(String userMessage, List<DemoCase> availableCases) {

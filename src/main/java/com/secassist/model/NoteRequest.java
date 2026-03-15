@@ -1,7 +1,7 @@
 package com.secassist.model;
 
 /**
- * Request-Objekt für das Hinzufügen einer Fallnotiz.
+ * Request-Objekt fuer das Hinzufuegen einer Fallnotiz.
  *
  * @param text der Notiztext
  */

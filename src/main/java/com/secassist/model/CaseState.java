@@ -1,16 +1,16 @@
 package com.secassist.model;
 
 /**
- * Zustand eines Falls nach Ausführung von Workflow-Aktionen.
+ * Zustand eines Falls nach Ausfuehrung von Workflow-Aktionen.
  *
  * <p>Macht den Incident-Effekt sichtbar: Eine scheinbar harmlose
  * Triage-Entscheidung kann den Fall in einen Zustand versetzen,
- * der die Sicherheitsreaktion effektiv unterdrückt.</p>
+ * der die Sicherheitsreaktion effektiv unterdrueckt.</p>
  *
- * @param escalationSuppressed Eskalation wurde unterdrückt (false positive)
- * @param priorityLow          Priorität auf LOW gesetzt
+ * @param escalationSuppressed Eskalation wurde unterdrueckt (false positive)
+ * @param priorityLow          Prioritaet auf LOW gesetzt
  * @param routedToFinance      Fall aus Security-Pipeline entfernt → Finance
- * @param trustNoteAttached    Supplier-Trust-Note angehängt (reduzierte Prüfung)
+ * @param trustNoteAttached    Supplier-Trust-Note angehaengt (reduzierte Pruefung)
  */
 public record CaseState(
         boolean escalationSuppressed,
@@ -23,12 +23,12 @@ public record CaseState(
         return new CaseState(false, false, false, false);
     }
 
-    /** Prüft, ob mindestens ein Incident-Effekt aktiv ist. */
+    /** Prueft, ob mindestens ein Incident-Effekt aktiv ist. */
     public boolean hasActiveEffects() {
         return escalationSuppressed || priorityLow || routedToFinance || trustNoteAttached;
     }
 
-    /** Erzeugt neuen Zustand mit gesetztem Effekt für die gegebene Aktion. */
+    /** Erzeugt neuen Zustand mit gesetztem Effekt fuer die gegebene Aktion. */
     public CaseState withActionApplied(String action) {
         return switch (action) {
             case "mark_case_likely_false_positive" ->

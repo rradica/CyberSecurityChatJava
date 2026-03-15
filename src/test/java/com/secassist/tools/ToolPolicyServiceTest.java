@@ -129,9 +129,9 @@ class ToolPolicyServiceTest {
         int poisonedScore = service.computeEvidenceScore(List.of(caseNoteWithStrongFalsePositiveClaims()));
         int benignScore = service.computeEvidenceScore(List.of(benignCaseNote()));
 
-        // Die aggressive Fallnotiz enthält starke Fehlalarm-Signale
+        // Die aggressive Fallnotiz enthaelt starke Fehlalarm-Signale
         // ("unabh\u00e4ngigen Kanal verifiziert", "regul\u00e4r verarbeitet")
-        // und treibt den Score deutlich stärker als eine harmlose Fallnotiz.
+        // und treibt den Score deutlich staerker als eine harmlose Fallnotiz.
         assertThat(poisonedScore).isGreaterThanOrEqualTo(6);
         assertThat(benignScore).isLessThanOrEqualTo(2);
         assertThat(poisonedScore).isGreaterThan(benignScore + 3);

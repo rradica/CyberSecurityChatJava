@@ -10,7 +10,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import com.secassist.model.TriageAssessment;
 
 /**
- * Tests für den OpenAI-LLM-Pfad: Fallback-Verhalten, Sanitization
+ * Tests fuer den OpenAI-LLM-Pfad: Fallback-Verhalten, Sanitization
  * und Default-Interface-Implementierung.
  */
 class OpenAiChatServiceTest {
@@ -39,7 +39,7 @@ class OpenAiChatServiceTest {
                 "high",
                 "mark_case_likely_false_positive",
                 0.9,
-                "Kontext enthält starke, aber potentiell fehlerhafte Evidenz.").sanitized();
+                "Kontext enthaelt starke, aber potentiell fehlerhafte Evidenz.").sanitized();
 
         TriageAssessment result = service.reviewTriage("system prompt", "case description", initial);
 
@@ -79,10 +79,10 @@ class OpenAiChatServiceTest {
     void fallbackAssessmentDoesNotTriggerWorkflowAction() {
         var fallback = TriageAssessment.FALLBACK;
 
-        // FALLBACK darf KEINE Workflow-Aktion auslösen
+        // FALLBACK darf KEINE Workflow-Aktion ausloesen
         assertThat(fallback.recommendedAction()).isNull();
         assertThat(fallback.hasValidAction()).isFalse();
-        // Sanitization ändert nichts am FALLBACK
+        // Sanitization aendert nichts am FALLBACK
         assertThat(fallback.sanitized()).isEqualTo(fallback);
     }
 }

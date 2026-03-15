@@ -26,7 +26,7 @@ import com.secassist.service.ConversationService;
 import com.secassist.service.DemoCaseService;
 
 /**
- * REST-API für die SecAssist-Anwendung.
+ * REST-API fuer die SecAssist-Anwendung.
  *
  * <p>Stellt alle Endpunkte bereit, die vom statischen Frontend konsumiert werden.</p>
  */
@@ -50,7 +50,7 @@ public class ApiController {
     }
 
     /**
-     * Hauptendpunkt für Chat- und Aktions-Requests.
+     * Hauptendpunkt fuer Chat- und Aktions-Requests.
      *
      * @param request der eingehende Request
      * @param session die HTTP-Session
@@ -62,7 +62,7 @@ public class ApiController {
     }
 
     /**
-     * Konversationeller Endpunkt – natürliche Freitext-Eingabe.
+     * Konversationeller Endpunkt – natuerliche Freitext-Eingabe.
      *
      * <p>Akzeptiert nur Rolle und Nachricht. Case und Aktion werden
      * automatisch per LLM-Intent-Erkennung bestimmt.</p>
@@ -76,13 +76,13 @@ public class ApiController {
         return conversationService.processMessage(request, session);
     }
 
-    /** Gibt die verfügbaren Demo-Fälle zurück. */
+    /** Gibt die verfuegbaren Demo-Faelle zurueck. */
     @GetMapping("/cases")
     public List<DemoCase> getCases() {
         return demoCaseService.getPublicCases();
     }
 
-    /** Gibt die verfügbaren Rollen zurück. */
+    /** Gibt die verfuegbaren Rollen zurueck. */
     @GetMapping("/roles")
     public List<String> getRoles() {
         return Arrays.stream(Role.values())
@@ -91,10 +91,10 @@ public class ApiController {
     }
 
     /**
-     * Fügt eine Benutzernotiz zu einem Fall hinzu.
+     * Fuegt eine Benutzernotiz zu einem Fall hinzu.
      *
      * <p>Die Notiz wird als Chunk in die Wissensdatenbank aufgenommen
-     * und beeinflusst zukünftige Retrieval-Ergebnisse für diesen Fall.</p>
+     * und beeinflusst zukuenftige Retrieval-Ergebnisse fuer diesen Fall.</p>
      *
      * @param caseId die Fall-ID
      * @param request der Notiztext
@@ -105,7 +105,7 @@ public class ApiController {
         return retrievalService.addUserNote(caseId, request.text());
     }
 
-    /** Entfernt alle dynamisch hinzugefügten User-Notizen. */
+    /** Entfernt alle dynamisch hinzugefuegten User-Notizen. */
     @DeleteMapping("/notes")
     public Map<String, String> clearNotes() {
         retrievalService.clearUserNotes();

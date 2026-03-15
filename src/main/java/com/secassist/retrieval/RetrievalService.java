@@ -26,10 +26,10 @@ import com.secassist.policy.PolicyEngine;
 /**
  * Einfacher, lokaler Retrieval-Service.
  *
- * <p>Lädt vorbereitete Chunks aus {@code data/chunks.json} und filtert sie
+ * <p>Laedt vorbereitete Chunks aus {@code data/chunks.json} und filtert sie
  * nach Policy (Klassifikation, Audience) und einfachem Tag-Matching.</p>
  *
- * <p>Reihenfolge (gemäß „Berechtigung vor Kontext"):
+ * <p>Reihenfolge (gemaeß „Berechtigung vor Kontext"):
  * <ol>
  *   <li>Policy-Filter (Klassifikation + Audience)</li>
  *   <li>Fallbezogene Relevanz (Tags)</li>
@@ -46,12 +46,12 @@ public class RetrievalService {
             "about", "after", "allgemein", "also", "anfrage", "auch", "beim", "bereits",
             "bitte", "case", "damit", "diese", "diesem", "diesen", "dieser", "dringende",
             "einer", "einem", "einen", "einerseits", "email", "erhalten", "etwas", "finance",
-            "frage", "früheren", "haben", "hello", "hintergrund", "history", "habe", "incident",
-            "inklusive", "irgendwie", "kann", "keine", "könnte", "mail", "mehrere", "message",
-            "mich", "nach", "nächste", "noch", "normal", "oder", "schritt", "seltsamen",
+            "frage", "frueheren", "haben", "hello", "hintergrund", "history", "habe", "incident",
+            "inklusive", "irgendwie", "kann", "keine", "koennte", "mail", "mehrere", "message",
+            "mich", "nach", "naechste", "noch", "normal", "oder", "schritt", "seltsamen",
             "sollen", "soll", "sowie", "standard", "status", "the", "und", "uns", "unter",
-            "verdächtige", "verdächtigen", "vielleicht", "vom", "von", "warum", "was", "weitere",
-            "weiteren", "wie", "wir", "with", "workflow", "zeigen", "zum", "zur", "über", "überweisung"
+            "verdaechtige", "verdaechtigen", "vielleicht", "vom", "von", "warum", "was", "weitere",
+            "weiteren", "wie", "wir", "with", "workflow", "zeigen", "zum", "zur", "ueber", "ueberweisung"
     );
 
     private final PolicyEngine policyEngine;
@@ -67,7 +67,7 @@ public class RetrievalService {
         this.objectMapper = objectMapper;
     }
 
-    /** Lädt die Chunks beim Appstart. */
+    /** Laedt die Chunks beim Appstart. */
     @PostConstruct
     void loadChunks() {
         try (InputStream is = new ClassPathResource("data/chunks.json").getInputStream()) {
@@ -80,7 +80,7 @@ public class RetrievalService {
     }
 
     /**
-     * Ruft relevante Chunks für einen bestimmten Kontext ab.
+     * Ruft relevante Chunks fuer einen bestimmten Kontext ab.
      *
      * @param role   aktuelle Benutzerrolle
      * @param caseId ID des aktiven Falls
@@ -90,15 +90,15 @@ public class RetrievalService {
      */
     public List<DocumentChunk> retrieve(Role role, String caseId, String mode, String query) {
         // Schritt 1: Relevanzfilter – nur Chunks, die zum Fall oder zur Anfrage passen
-        // Kombiniert statische Chunks und dynamisch hinzugefügte User-Notizen
+        // Kombiniert statische Chunks und dynamisch hinzugefuegte User-Notizen
         List<DocumentChunk> relevant = Stream.concat(allChunks.stream(), userNotes.stream())
                 .filter(chunk -> matchesCaseOrQuery(chunk, caseId, query))
                 .collect(Collectors.toCollection(ArrayList::new));
 
         // Schritt 2: Policy-Filter – Zugriffssteuerung nach Klassifikation und Zielgruppe.
         // Im Handover-Modus werden Security-Team-Berechtigungen verwendet, da
-        // Übergabe-Entwürfe an das Security-Team gerichtet sind und umfassenden
-        // Kontext benötigen.
+        // Uebergabe-Entwuerfe an das Security-Team gerichtet sind und umfassenden
+        // Kontext benoetigen.
         Set<String> allowedClassifications = "handover".equals(mode)
                 ? Set.of("public", "internal", "confidential")
                 : policyEngine.allowedClassifications(role);
@@ -110,33 +110,33 @@ public class RetrievalService {
                 .filter(c -> allowedAudiences.contains(c.audience()))
                 .collect(Collectors.toCollection(ArrayList::new));
 
-        // Schritt 3: Einfaches Ranking – höheres Trust-Level bevorzugen
+        // Schritt 3: Einfaches Ranking – hoeheres Trust-Level bevorzugen
         relevant.sort(Comparator.comparingInt(this::trustScore).reversed());
 
         // Schritt 4: Begrenzung
         return relevant.stream().limit(MAX_CHUNKS).toList();
     }
 
-    /** Gibt alle geladenen Chunks zurück (für Tests). */
+    /** Gibt alle geladenen Chunks zurueck (fuer Tests). */
     public List<DocumentChunk> getAllChunks() {
         return allChunks;
     }
 
     /**
-     * Fügt eine Benutzernotiz als Chunk hinzu.
+     * Fuegt eine Benutzernotiz als Chunk hinzu.
      *
      * <p>SCHWACHSTELLE [BUG_RAG_POISONING]: Wenn der Bug aktiv ist, wird die Notiz
      * mit {@code trustLevel: "high"} und {@code classification: "internal"} gespeichert
      * – gleichwertig mit kuratierten internen Dokumenten. Ein Angreifer kann so
-     * gefälschte "interne Einschätzungen" (z.B. angebliche Rechtsabteilung-Bestätigungen)
-     * in die Wissensdatenbank einschleusen, die bei späteren Abfragen neben echten
+     * gefaelschte "interne Einschaetzungen" (z.B. angebliche Rechtsabteilung-Bestaetigungen)
+     * in die Wissensdatenbank einschleusen, die bei spaeteren Abfragen neben echten
      * Policies und Runbooks erscheinen.</p>
      *
      * <p>SOLL: Notizen immer als {@code trustLevel: "untrusted"}, {@code sourceType: "user_note"}
      * speichern, damit sie in getrennten Kontextsektionen erscheinen und die KI
-     * sie als ungeprüften User-Input erkennt.</p>
+     * sie als ungeprueften User-Input erkennt.</p>
      *
-     * @param caseId die Fall-ID, zu der die Notiz gehört
+     * @param caseId die Fall-ID, zu der die Notiz gehoert
      * @param text   der Notiztext
      * @return der erstellte Chunk
      */
@@ -147,8 +147,8 @@ public class RetrievalService {
                 : List.of();
 
         // SCHWACHSTELLE [BUG_RAG_POISONING]: User-Notiz wird als internes,
-        // vertrauenswürdiges Dokument gespeichert – gleichwertig mit kuratierten
-        // internen Dokumenten. Angreifer können so gefälschte "interne Einschätzungen"
+        // vertrauenswuerdiges Dokument gespeichert – gleichwertig mit kuratierten
+        // internen Dokumenten. Angreifer koennen so gefaelschte "interne Einschaetzungen"
         // in die Wissensdatenbank einschleusen.
         // FIX: Notiz als untrusted/public/user_note speichern:
         //   new DocumentChunk("user_note_" + num, "user_note_" + caseId,
@@ -172,14 +172,14 @@ public class RetrievalService {
         return note;
     }
 
-    /** Entfernt alle dynamisch hinzugefügten User-Notizen. */
+    /** Entfernt alle dynamisch hinzugefuegten User-Notizen. */
     public void clearUserNotes() {
         userNotes.clear();
         noteCounter.set(0);
         log.debug("User notes cleared");
     }
 
-    /** Gibt die Anzahl der User-Notizen zurück (für Tests). */
+    /** Gibt die Anzahl der User-Notizen zurueck (fuer Tests). */
     public int getUserNoteCount() {
         return userNotes.size();
     }
@@ -189,7 +189,7 @@ public class RetrievalService {
     private boolean matchesCaseOrQuery(DocumentChunk chunk, String caseId, String query) {
         boolean caseMatch = false;
         if (caseId != null && !caseId.isBlank()) {
-            // Einfaches Tag-Matching basierend auf Schlüsselwörtern aus der Case-ID
+            // Einfaches Tag-Matching basierend auf Schluesselwoertern aus der Case-ID
             String[] keywords = caseId.split("_");
             for (String kw : keywords) {
                 if (chunk.tags().stream().anyMatch(tag -> tag.equalsIgnoreCase(kw))) {

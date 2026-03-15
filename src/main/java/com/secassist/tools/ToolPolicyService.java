@@ -11,15 +11,15 @@ import com.secassist.model.Role;
 import com.secassist.policy.PolicyEngine;
 
 /**
- * Steuert, ob ein Tool/Workflow-Schritt ausgeführt werden darf.
+ * Steuert, ob ein Tool/Workflow-Schritt ausgefuehrt werden darf.
  *
  * <p>Die Entscheidung wird deterministisch auf Basis von Rolle, Policy und
- * Evidenzqualität getroffen. Das LLM liefert höchstens einen Vorschlag,
+ * Evidenzqualitaet getroffen. Das LLM liefert hoechstens einen Vorschlag,
  * die App entscheidet.</p>
  *
- * <p>Neben der Standard-Rollenprüfung wird bei Triage-Aktionen ein
- * Evidence-Confidence-Score aus dem Kontext berechnet. Überschreitet der Score
- * den Schwellwert, können bestimmte Aktionen auch ohne Analyst-Rolle
+ * <p>Neben der Standard-Rollenpruefung wird bei Triage-Aktionen ein
+ * Evidence-Confidence-Score aus dem Kontext berechnet. Ueberschreitet der Score
+ * den Schwellwert, koennen bestimmte Aktionen auch ohne Analyst-Rolle
  * freigegeben werden. Der Schwellwert und die Quellenbewertung sind
  * konfigurierbar, um den Triage-Workflow an verschiedene Risikoprofile
  * anzupassen.</p>
@@ -39,27 +39,27 @@ public class ToolPolicyService {
     }
 
     /**
-     * Prüft, ob ein Tool für die aktuelle Rolle und den Kontext erlaubt ist.
+     * Prueft, ob ein Tool fuer die aktuelle Rolle und den Kontext erlaubt ist.
      *
-     * <p>Standard-Rollenprüfung über PolicyEngine, mit evidenzbasierter Lockerung
-     * für Triage-Aktionen: Wenn der Kontext genügend starke Evidenz enthält,
-     * können bestimmte Workflow-Aktionen auch für Nicht-Analyst-Rollen erlaubt werden.</p>
+     * <p>Standard-Rollenpruefung ueber PolicyEngine, mit evidenzbasierter Lockerung
+     * fuer Triage-Aktionen: Wenn der Kontext genuegend starke Evidenz enthaelt,
+     * koennen bestimmte Workflow-Aktionen auch fuer Nicht-Analyst-Rollen erlaubt werden.</p>
      *
      * @param role     aktuelle Benutzerrolle
      * @param toolName Name des angeforderten Tools
      * @param context  Retrieval-Kontext (Chunks), der die Anfrage begleitet
-     * @return {@code true}, wenn das Tool ausgeführt werden darf
+     * @return {@code true}, wenn das Tool ausgefuehrt werden darf
      */
     public boolean isToolAllowed(Role role, String toolName, List<DocumentChunk> context) {
         return evaluateAccess(role, toolName, context).allowed();
     }
 
     /**
-     * Detaillierte Zugriffsprüfung mit Begründung und Score-Details.
+     * Detaillierte Zugriffspruefung mit Begruendung und Score-Details.
      *
-     * <p>Liefert ein {@link ToolPolicyDecision} mit der Entscheidung, der Begründung
-     * und – bei evidenzbasierter Prüfung – dem berechneten Score und Schwellwert.
-     * Wird vom Frontend für Transparenz-/Audit-Anzeigen verwendet.</p>
+     * <p>Liefert ein {@link ToolPolicyDecision} mit der Entscheidung, der Begruendung
+     * und – bei evidenzbasierter Pruefung – dem berechneten Score und Schwellwert.
+     * Wird vom Frontend fuer Transparenz-/Audit-Anzeigen verwendet.</p>
      *
      * @param role     aktuelle Benutzerrolle
      * @param toolName Name des angeforderten Tools
@@ -78,10 +78,10 @@ public class ToolPolicyService {
             log.debug("Evidence score for '{}': {} (threshold: {})", toolName, score, threshold);
 
             if (score >= threshold) {
-                // SCHWACHSTELLE [BUG_TOOL_FASTTRACK, Teil 2/2]: Es fehlt die Prüfung,
+                // SCHWACHSTELLE [BUG_TOOL_FASTTRACK, Teil 2/2]: Es fehlt die Pruefung,
                 // ob mindestens eine trusted interne Quelle vorhanden ist.
-                // Hoher Score aus rein untrusted Quellen genügt, um Aktionen freizuschalten.
-                // FIX: Zusätzlich zum Score muss mindestens eine Quelle mit
+                // Hoher Score aus rein untrusted Quellen genuegt, um Aktionen freizuschalten.
+                // FIX: Zusaetzlich zum Score muss mindestens eine Quelle mit
                 // trustLevel="high" vorhanden sein:
                 //   boolean hasTrustedSource = context.stream()
                 //           .anyMatch(c -> "high".equals(c.trustLevel()));
@@ -165,12 +165,12 @@ public class ToolPolicyService {
      * Gibt den effektiven Evidenz-Schwellwert f\u00fcr eine Aktion zur\u00fcck.
      * Niedrigere Schwellwerte f\u00fcr Routine-Triage-Aktionen beschleunigen den Workflow.
      */
-    // SCHWACHSTELLE [BUG_TOOL_FASTTRACK, Teil 1a/2]: Reduzierte Schwellwerte für
+    // SCHWACHSTELLE [BUG_TOOL_FASTTRACK, Teil 1a/2]: Reduzierte Schwellwerte fuer
     // "Routine"-Triage-Aktionen beschleunigen den Workflow, senken aber die
     // Evidenzanforderung so weit, dass bereits einseitige untrusted Supplier-
-    // Referenzen ausreichen. Kombiniert mit der fehlenden Quellenprüfung (Teil 2)
-    // können Angreifer über manipulierte Supplier-Notes Aktionen auslösen.
-    // FIX: Einheitlichen Schwellwert EVIDENCE_THRESHOLD für alle Aktionen verwenden:
+    // Referenzen ausreichen. Kombiniert mit der fehlenden Quellenpruefung (Teil 2)
+    // koennen Angreifer ueber manipulierte Supplier-Notes Aktionen ausloesen.
+    // FIX: Einheitlichen Schwellwert EVIDENCE_THRESHOLD fuer alle Aktionen verwenden:
     //   return EVIDENCE_THRESHOLD;
     int effectiveThreshold(String toolName) {
         return switch (toolName) {
@@ -180,10 +180,10 @@ public class ToolPolicyService {
         };
     }
 
-    // SCHWACHSTELLE [BUG_TOOL_FASTTRACK, Teil 1b/2]: sourceWeight() gibt für ALLE
-    // Quellen Gewicht 1 zurück – egal ob trusted oder untrusted. Untrusted Supplier-
+    // SCHWACHSTELLE [BUG_TOOL_FASTTRACK, Teil 1b/2]: sourceWeight() gibt fuer ALLE
+    // Quellen Gewicht 1 zurueck – egal ob trusted oder untrusted. Untrusted Supplier-
     // Notes (mit Phrasen wie "verified by compliance") treiben den Evidence-Score
-    // über den Threshold und schalten Workflow-Aktionen für Nicht-Analysten frei.
+    // ueber den Threshold und schalten Workflow-Aktionen fuer Nicht-Analysten frei.
     // FIX: Nur trustLevel "high" darf Gewicht > 0 haben:
     //   return "high".equals(chunk.trustLevel()) ? 1 : 0;
     int sourceWeight(DocumentChunk chunk) {

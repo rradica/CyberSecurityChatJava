@@ -10,11 +10,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import com.secassist.model.TriageAssessment;
 
 /**
- * Smoke-Test für den echten LLM-Pfad.
+ * Smoke-Test fuer den echten LLM-Pfad.
  *
- * <p>Läuft NUR, wenn die Umgebungsvariable {@code OPENAI_API_KEY} gesetzt ist.
+ * <p>Laeuft NUR, wenn die Umgebungsvariable {@code OPENAI_API_KEY} gesetzt ist.
  * Im normalen Testlauf (CI, lokale Entwicklung ohne Key) wird die gesamte
- * Klasse übersprungen – kein Einfluss auf den regulären Build.</p>
+ * Klasse uebersprungen – kein Einfluss auf den regulaeren Build.</p>
  */
 @SpringBootTest
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
@@ -37,14 +37,14 @@ class RealLlmSmokeTest {
         assertThat(result).isNotNull();
         assertThat(result.summary()).isNotNull().isNotEmpty();
 
-        // Nach sanitized() müssen alle Felder gültig sein
+        // Nach sanitized() muessen alle Felder gueltig sein
         TriageAssessment sanitized = result.sanitized();
         assertThat(sanitized.riskLevel()).isIn("low", "medium", "high", "critical");
         assertThat(sanitized.confidence()).isBetween(0.0, 1.0);
         assertThat(sanitized.summary()).isNotNull().isNotEmpty();
         assertThat(sanitized.evidenceAssessment()).isNotNull().isNotEmpty();
 
-        // recommendedAction ist entweder gültig oder null
+        // recommendedAction ist entweder gueltig oder null
         if (sanitized.recommendedAction() != null) {
             assertThat(TriageAssessment.KNOWN_ACTIONS).contains(sanitized.recommendedAction());
         }

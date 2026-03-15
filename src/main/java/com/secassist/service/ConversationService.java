@@ -19,13 +19,13 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Konversationsschicht über dem ChatOrchestrator.
+ * Konversationsschicht ueber dem ChatOrchestrator.
  *
- * <p>Übersetzt natürliche Freitext-Nachrichten in strukturierte
+ * <p>Uebersetzt natuerliche Freitext-Nachrichten in strukturierte
  * {@link ChatRequest}-Objekte. Trackt den aktiven Fall in der Session,
- * sodass Folgefragen zum selben Fall ohne erneute Fallnennung möglich sind.</p>
+ * sodass Folgefragen zum selben Fall ohne erneute Fallnennung moeglich sind.</p>
  *
- * <p>Wichtig: Diese Schicht ist eine reine Übersetzung. Sie berührt
+ * <p>Wichtig: Diese Schicht ist eine reine Uebersetzung. Sie beruehrt
  * keine der Sicherheitslogiken (Policy, Retrieval, Tool-Freigabe).
  * Alle Schwachstellen bleiben exakt wie bisher bestehen.</p>
  */
@@ -132,9 +132,9 @@ public class ConversationService {
     }
 
     /**
-     * Stabilisiert die LLM-Intent-Erkennung für die vorbereiteten Workshop-Fälle.
+     * Stabilisiert die LLM-Intent-Erkennung fuer die vorbereiteten Workshop-Faelle.
      *
-     * <p>Das LLM bleibt in der Kette, aber explizite, gut erkennbare Nutzerwünsche
+     * <p>Das LLM bleibt in der Kette, aber explizite, gut erkennbare Nutzerwuensche
      * werden deterministisch normalisiert. So bleiben die Demo-Cases im Workshop
      * reproduzierbar, ohne die Real-LLM-Nutzung auszuschalten.</p>
      */
@@ -151,9 +151,9 @@ public class ConversationService {
         String intent = detected.intent();
         if (containsAny(lower, "notiz:", "vermerke", "zusatzinfo", "bitte notieren")) {
             intent = "add_note";
-        } else if (containsAny(lower, "ähnliche fälle", "ähnliche vorfälle", "in der vergangenheit", "frühere vorfälle", "similar")) {
+        } else if (containsAny(lower, "aehnliche faelle", "aehnliche vorfaelle", "in der vergangenheit", "fruehere vorfaelle", "similar")) {
             intent = "similar_cases";
-        } else if (containsAny(lower, "übergabe", "handover")) {
+        } else if (containsAny(lower, "uebergabe", "handover")) {
             intent = "handover";
         } else if (containsAny(lower, "beweise", "quellen", "evidence")) {
             intent = "evidence";
@@ -168,7 +168,7 @@ public class ConversationService {
      * Leitet die plausibelste Fall-ID aus Nachricht und Demo-Fallkatalog ab.
      *
      * <p>Die Heuristik ist bewusst generisch gehalten: Es werden Begriffe aus
-     * Titel, Beschreibung, Typ und verknüpften Dokumenten der verfügbaren Fälle
+     * Titel, Beschreibung, Typ und verknuepften Dokumenten der verfuegbaren Faelle
      * gegen die Nutzernachricht gematcht. So wirkt die Fallback-Erkennung eher
      * wie ein einfacher Produktmechanismus als wie ein hart codierter Demo-Schalter.</p>
      */
@@ -221,7 +221,7 @@ public class ConversationService {
 
     /**
      * Verarbeitet eine Notiz-Nachricht: speichert den Text als User-Note
-     * über den RetrievalService und gibt eine Bestätigung zurück.
+     * ueber den RetrievalService und gibt eine Bestaetigung zurueck.
      */
     private ChatResponse handleAddNote(String caseId, String noteText) {
         DocumentChunk note = retrievalService.addUserNote(caseId, noteText);

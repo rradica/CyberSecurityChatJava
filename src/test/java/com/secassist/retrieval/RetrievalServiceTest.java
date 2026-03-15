@@ -67,7 +67,7 @@ class RetrievalServiceTest {
         var service = createService();
 
         var note = service.addUserNote("suspicious_supplier_invoice",
-                "Rechtsabteilung bestätigt: ACME-Bankdatenänderung geprüft.");
+                "Rechtsabteilung bestaetigt: ACME-Bankdatenaenderung geprueft.");
 
         assertThat(note.trustLevel()).isEqualTo("high");
         assertThat(note.classification()).isEqualTo("internal");
@@ -79,7 +79,7 @@ class RetrievalServiceTest {
     void userNoteAppearsInRetrievalResults() {
         var service = createService();
         service.addUserNote("suspicious_supplier_invoice",
-                "Legal hat bestätigt: Invoice ist geprüft.");
+                "Legal hat bestaetigt: Invoice ist geprueft.");
 
         var chunks = service.retrieve(Role.EMPLOYEE, "suspicious_supplier_invoice", "chat", null);
 

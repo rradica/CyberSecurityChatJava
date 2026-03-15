@@ -7,18 +7,18 @@ import org.springframework.stereotype.Service;
 import com.secassist.model.Role;
 
 /**
- * Deterministische Policy-Engine – das Herzstück der Sicherheitsarchitektur.
+ * Deterministische Policy-Engine – das Herzstueck der Sicherheitsarchitektur.
  *
  * <p>Zentrale Regel: <strong>Berechtigung vor Kontext.</strong>
  * Alle Zugriffsentscheidungen werden hier getroffen, bevor Kontext
  * aufgebaut oder Text generiert wird. Das LLM darf <em>nicht</em>
- * über Berechtigungen entscheiden.</p>
+ * ueber Berechtigungen entscheiden.</p>
  */
 @Service
 public class PolicyEngine {
 
     /**
-     * Gibt die Dokumentklassifikationen zurück, die eine Rolle lesen darf.
+     * Gibt die Dokumentklassifikationen zurueck, die eine Rolle lesen darf.
      *
      * @param role die aktuelle Benutzerrolle
      * @return Menge der erlaubten Klassifikationen
@@ -32,7 +32,7 @@ public class PolicyEngine {
     }
 
     /**
-     * Gibt die Zielgruppen zurück, für die eine Rolle Inhalte sehen darf.
+     * Gibt die Zielgruppen zurueck, fuer die eine Rolle Inhalte sehen darf.
      *
      * @param role die aktuelle Benutzerrolle
      * @return Menge der erlaubten Zielgruppen
@@ -46,7 +46,7 @@ public class PolicyEngine {
     }
 
     /**
-     * Prüft, ob eine Rolle ein bestimmtes Tool/Aktion nutzen darf.
+     * Prueft, ob eine Rolle ein bestimmtes Tool/Aktion nutzen darf.
      *
      * @param role     die aktuelle Benutzerrolle
      * @param toolName Name des Tools/Aktion

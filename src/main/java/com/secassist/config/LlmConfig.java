@@ -8,10 +8,10 @@ import com.secassist.llm.LlmService;
 import com.secassist.llm.OpenAiChatService;
 
 /**
- * Konfiguration für den LLM-Service.
+ * Konfiguration fuer den LLM-Service.
  *
- * <p>Verwendet Spring AI's {@link ChatClient} für echte OpenAI-Aufrufe.
- * Erfordert einen gültigen {@code OPENAI_API_KEY}.</p>
+ * <p>Verwendet Spring AI's {@link ChatClient} fuer echte OpenAI-Aufrufe.
+ * Erfordert einen gueltigen {@code OPENAI_API_KEY}.</p>
  */
 @Configuration
 public class LlmConfig {

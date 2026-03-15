@@ -229,13 +229,13 @@ class ConversationServiceTest {
         // Orchestrator wurde NICHT aufgerufen
         verify(orchestrator, never()).processRequest(any(), any());
 
-        // Antwort enthält Bestätigung mit Vertrauensstufe
+        // Antwort enthaelt Bestaetigung mit Vertrauensstufe
         assertThat(response.reply()).contains("Notiz zu");
         assertThat(response.reply()).contains("suspicious_supplier_invoice");
         assertThat(response.reply()).contains("gespeichert");
         assertThat(response.reply()).contains("Vertrauensstufe");
 
-        // Kein SecurityContext für Notiz-Antworten (reduzierte UI-Komplexität)
+        // Kein SecurityContext fuer Notiz-Antworten (reduzierte UI-Komplexitaet)
         assertThat(response.securityContext()).isNull();
     }
 }

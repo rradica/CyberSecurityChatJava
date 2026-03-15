@@ -15,18 +15,18 @@ import com.secassist.model.DemoCase;
 import com.secassist.model.Role;
 
 /**
- * Verwaltet die vorbereiteten Demo-Fälle für den Workshop.
+ * Verwaltet die vorbereiteten Demo-Faelle fuer den Workshop.
  *
- * <p>Ähnliche Fälle werden inklusive redaktierter Zusammenfassungen aus
- * eingeschränkten Fällen zurückgegeben, damit alle Benutzer einen Überblick
- * über die Incident-Landschaft erhalten.</p>
+ * <p>Aehnliche Faelle werden inklusive redaktierter Zusammenfassungen aus
+ * eingeschraenkten Faellen zurueckgegeben, damit alle Benutzer einen Ueberblick
+ * ueber die Incident-Landschaft erhalten.</p>
  */
 @Service
 public class DemoCaseService {
 
     private static final Logger log = LoggerFactory.getLogger(DemoCaseService.class);
 
-    /** Öffentlich sichtbare Demo-Fälle. */
+    /** Oeffentlich sichtbare Demo-Faelle. */
     private static final List<DemoCase> PUBLIC_CASES = List.of(
             new DemoCase("suspicious_supplier_invoice",
                     "Verd\u00e4chtige Lieferantenrechnung",
@@ -68,9 +68,9 @@ public class DemoCaseService {
     }
 
     /**
-     * Gibt die öffentlich sichtbaren Demo-Fälle zurück.
+     * Gibt die oeffentlich sichtbaren Demo-Faelle zurueck.
      *
-     * @return Liste der Demo-Fälle für das UI
+     * @return Liste der Demo-Faelle fuer das UI
      */
     public List<DemoCase> getPublicCases() {
         return PUBLIC_CASES;
@@ -93,28 +93,28 @@ public class DemoCaseService {
     }
 
     /**
-     * Findet ähnliche Fälle zum angegebenen Fall.
+     * Findet aehnliche Faelle zum angegebenen Fall.
      *
      * @param caseId der aktuelle Fall
      * @param role   die aktuelle Benutzerrolle
-     * @return Liste ähnlicher Fälle
+     * @return Liste aehnlicher Faelle
      */
     public List<DemoCase> findSimilarCases(String caseId, Role role) {
         return findSimilarCases(caseId, role, null);
     }
 
     /**
-     * Findet ähnliche Fälle zum angegebenen Fall.
+     * Findet aehnliche Faelle zum angegebenen Fall.
      *
-     * <p>Unterstützt eine optionale Suchanfrage, um die Ähnlichkeitssuche
-     * zu verfeinern. Bei Suchanfragen werden auch eingeschränkte Fälle
-     * in die Keyword-Suche einbezogen, damit Benutzer einen vollständigeren
-     * Überblick über die Incident-Landschaft erhalten.</p>
+     * <p>Unterstuetzt eine optionale Suchanfrage, um die Aehnlichkeitssuche
+     * zu verfeinern. Bei Suchanfragen werden auch eingeschraenkte Faelle
+     * in die Keyword-Suche einbezogen, damit Benutzer einen vollstaendigeren
+     * Ueberblick ueber die Incident-Landschaft erhalten.</p>
      *
      * @param caseId der aktuelle Fall
      * @param role   die aktuelle Benutzerrolle
-     * @param query  optionale Suchanfrage für erweiterte Ähnlichkeitssuche
-     * @return Liste ähnlicher Fälle
+     * @param query  optionale Suchanfrage fuer erweiterte Aehnlichkeitssuche
+     * @return Liste aehnlicher Faelle
      */
     public List<DemoCase> findSimilarCases(String caseId, Role role, String query) {
         DemoCase currentCase = findById(caseId);
@@ -126,12 +126,12 @@ public class DemoCaseService {
         );
 
         if (role == Role.SECURITY_ANALYST) {
-            // Analysten sehen vollständige Details interner Fälle
+            // Analysten sehen vollstaendige Details interner Faelle
             similar.addAll(INTERNAL_CASES);
         } else if (query != null && !query.isBlank()) {
-            // Bei Suchanfragen auch interne Fälle in die Keyword-Suche einbeziehen
-            // und aggregierte Metadaten zurückgeben, damit Benutzer einen
-            // umfassenderen Überblick erhalten.
+            // Bei Suchanfragen auch interne Faelle in die Keyword-Suche einbeziehen
+            // und aggregierte Metadaten zurueckgeben, damit Benutzer einen
+            // umfassenderen Ueberblick erhalten.
             similar.addAll(redactedSummaries(caseId, currentCase, query));
         }
 
@@ -139,8 +139,8 @@ public class DemoCaseService {
     }
 
     /**
-     * Aggregierte, fallbezogene Zusammenfassung passender eingeschränkter Fälle.
-     * Berücksichtigt sowohl den aktuellen Fall als auch die Suchanfrage.
+     * Aggregierte, fallbezogene Zusammenfassung passender eingeschraenkter Faelle.
+     * Beruecksichtigt sowohl den aktuellen Fall als auch die Suchanfrage.
      */
     private List<DemoCase> redactedSummaries(String caseId, DemoCase currentCase, String query) {
         List<DemoCase> matching = INTERNAL_CASES.stream()
@@ -183,8 +183,8 @@ public class DemoCaseService {
             "nicht", "noch", "bitte", "gibt", "gab");
 
     /**
-     * Prüft, ob ein interner Fall auf die Suchanfrage passt.
-     * Schlüsselwörter (>= 4 Zeichen, ohne Stoppwörter) aus der Anfrage
+     * Prueft, ob ein interner Fall auf die Suchanfrage passt.
+     * Schluesselwoerter (>= 4 Zeichen, ohne Stoppwoerter) aus der Anfrage
      * werden gegen ID, Typ und Beschreibung des internen Falls abgeglichen.
      */
     private boolean matchesQuery(DemoCase internalCase, String query) {
@@ -200,9 +200,9 @@ public class DemoCaseService {
     }
 
     /**
-     * Prüft, ob ein interner Fall thematisch zum aktuellen Fall passt.
-     * Einfaches Keyword-Matching: Schlüsselwörter (>= 4 Zeichen, ohne
-     * Stoppwörter) aus caseId, Typ und Beschreibung des aktuellen Falls
+     * Prueft, ob ein interner Fall thematisch zum aktuellen Fall passt.
+     * Einfaches Keyword-Matching: Schluesselwoerter (>= 4 Zeichen, ohne
+     * Stoppwoerter) aus caseId, Typ und Beschreibung des aktuellen Falls
      * werden gegen ID, Typ und Beschreibung des internen Falls abgeglichen.
      */
     private boolean matchesCase(DemoCase internalCase, String caseId, DemoCase currentCase) {

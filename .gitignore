@@ -1,23 +1,51 @@
-# Build
+# Build-Artefakte
 target/
+out/
+build/
+*.class
 
-# IDE
+# Test- und Laufzeitdateien
+*.log
+*.tmp
+*.pid
+*.seed
+*.stackdump
+hs_err_pid*
+replay_pid*
+
+# Lokale Umgebungsdateien
+.env
+.env.*
+!.env.example
+*.local
+
+# Maven / Java Tooling
+.mvn/timing.properties
+
+# IntelliJ IDEA
 .idea/
 *.iml
-.vscode/
+*.ipr
+*.iws
+
+# Eclipse / VS Code Java
 .settings/
 .project
 .classpath
+.factorypath
+
+# VS Code
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# Editoren
 *.swp
 *.swo
 
-# OS
+# Betriebssysteme
 .DS_Store
 Thumbs.db
-
-# Env
-.env
-*.log
-
-# Maven wrapper jar
-!.mvn/wrapper/maven-wrapper.jar
+Desktop.ini

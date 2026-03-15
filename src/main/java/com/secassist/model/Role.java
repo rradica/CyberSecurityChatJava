@@ -1,20 +1,20 @@
 package com.secassist.model;
 
 /**
- * Demo-Rollen für die Workshop-Anwendung.
+ * Demo-Rollen fuer die Workshop-Anwendung.
  *
- * <p>Keine echte Authentisierung – die Rolle wird im UI ausgewählt
+ * <p>Keine echte Authentisierung – die Rolle wird im UI ausgewaehlt
  * und mit jedem Request mitgeschickt.</p>
  */
 public enum Role {
 
-    /** Externer Auftragnehmer – eingeschränkter Zugriff. */
+    /** Externer Auftragnehmer – eingeschraenkter Zugriff. */
     CONTRACTOR,
 
     /** Interner Mitarbeiter – erweiterter Zugriff auf interne Dokumente. */
     EMPLOYEE,
 
-    /** Security-Analyst – voller Zugriff, darf Workflow-Aktionen auslösen. */
+    /** Security-Analyst – voller Zugriff, darf Workflow-Aktionen ausloesen. */
     SECURITY_ANALYST;
 
     /**

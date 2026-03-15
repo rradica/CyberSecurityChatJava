@@ -10,10 +10,10 @@ import java.util.Set;
  * ChatOrchestrator arbeitet mit den typisierten Feldern.</p>
  *
  * @param summary             Zusammenfassung der Triage-Analyse
- * @param riskLevel           Risikoeinschätzung: low, medium, high, critical
+ * @param riskLevel           Risikoeinschaetzung: low, medium, high, critical
  * @param recommendedAction   empfohlene Workflow-Aktion (null = keine)
  * @param confidence          Konfidenz der Empfehlung (0.0 – 1.0)
- * @param evidenceAssessment  Bewertung der verfügbaren Evidenz
+ * @param evidenceAssessment  Bewertung der verfuegbaren Evidenz
  */
 public record TriageAssessment(
         String summary,
@@ -22,7 +22,7 @@ public record TriageAssessment(
         double confidence,
         String evidenceAssessment
 ) {
-    /** Bekannte Workflow-Aktionen, die empfohlen werden dürfen. */
+    /** Bekannte Workflow-Aktionen, die empfohlen werden duerfen. */
     public static final Set<String> KNOWN_ACTIONS = Set.of(
             "mark_case_likely_false_positive",
             "set_case_priority_low",
@@ -30,12 +30,12 @@ public record TriageAssessment(
             "attach_supplier_trust_note"
     );
 
-    /** Gültige Risikostufen. */
+    /** Gueltige Risikostufen. */
     public static final Set<String> KNOWN_RISK_LEVELS = Set.of(
             "low", "medium", "high", "critical"
     );
 
-    /** Sicherer Fallback, wenn der Real-LLM-Aufruf fehlschlägt. */
+    /** Sicherer Fallback, wenn der Real-LLM-Aufruf fehlschlaegt. */
     public static final TriageAssessment FALLBACK = new TriageAssessment(
             "Automatische Triage-Bewertung nicht verf\u00fcgbar. Manuelle Pr\u00fcfung erforderlich.",
             "medium",
@@ -44,19 +44,19 @@ public record TriageAssessment(
             "Bewertung konnte nicht automatisch abgeschlossen werden."
     );
 
-    /** Prüft, ob die empfohlene Aktion eine bekannte, gültige Aktion ist. */
+    /** Prueft, ob die empfohlene Aktion eine bekannte, gueltige Aktion ist. */
     public boolean hasValidAction() {
         return recommendedAction != null && KNOWN_ACTIONS.contains(recommendedAction);
     }
 
-    /** Prüft, ob die Risikostufe ein bekannter, gültiger Wert ist. */
+    /** Prueft, ob die Risikostufe ein bekannter, gueltiger Wert ist. */
     public boolean hasValidRiskLevel() {
         return riskLevel != null && KNOWN_RISK_LEVELS.contains(riskLevel);
     }
 
     /**
-     * Gibt eine bereinigte Kopie zurück: unbekannte Aktionen werden zu {@code null},
-     * ungültiges riskLevel wird zu {@code "medium"}, Confidence wird auf [0,1]
+     * Gibt eine bereinigte Kopie zurueck: unbekannte Aktionen werden zu {@code null},
+     * ungueltiges riskLevel wird zu {@code "medium"}, Confidence wird auf [0,1]
      * geklemmt, null-Felder erhalten sichere Defaults.
      */
     public TriageAssessment sanitized() {

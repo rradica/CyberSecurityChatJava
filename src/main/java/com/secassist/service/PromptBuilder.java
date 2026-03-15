@@ -29,7 +29,7 @@ public class PromptBuilder {
     }
 
     /**
-     * Baut den System-Prompt für einen Chat-Request (ohne Fallzustand).
+     * Baut den System-Prompt fuer einen Chat-Request (ohne Fallzustand).
      */
     public String buildSystemPrompt(Role role, String caseDesc,
                                     List<DocumentChunk> context, String mode) {
@@ -37,7 +37,7 @@ public class PromptBuilder {
     }
 
     /**
-     * Baut den System-Prompt für einen Chat-Request.
+     * Baut den System-Prompt fuer einen Chat-Request.
      *
      * @param role        aktuelle Benutzerrolle
      * @param caseDesc    Fallbeschreibung
@@ -63,7 +63,7 @@ public class PromptBuilder {
         sb.append("Aktueller Fall: ").append(caseDesc).append("\n");
         sb.append("Modus: ").append(mode).append("\n\n");
 
-        // Incident-Effekte anzeigen, damit Folgeantworten den Zustand berücksichtigen
+        // Incident-Effekte anzeigen, damit Folgeantworten den Zustand beruecksichtigen
         if (caseState != null && caseState.hasActiveEffects()) {
             appendCaseState(sb, caseState);
         }
@@ -152,7 +152,7 @@ public class PromptBuilder {
     }
 
     /**
-     * Fügt den aktuellen Fallzustand (Incident-Effekte) in den Prompt ein.
+     * Fuegt den aktuellen Fallzustand (Incident-Effekte) in den Prompt ein.
      */
     private void appendCaseState(StringBuilder sb, CaseState state) {
         sb.append("=== Aktive Fall\u00e4nderungen ===\n");
@@ -176,7 +176,7 @@ public class PromptBuilder {
     }
 
     /**
-     * Gibt die Quellen-IDs aus dem Kontext zurück.
+     * Gibt die Quellen-IDs aus dem Kontext zurueck.
      *
      * @param context die verwendeten Chunks
      * @return Liste der Chunk-IDs

@@ -17,15 +17,15 @@ import com.secassist.model.DemoCase;
 import com.secassist.model.TriageAssessment;
 
 /**
- * LLM-Service mit echtem OpenAI-API-Aufruf über Spring AI.
+ * LLM-Service mit echtem OpenAI-API-Aufruf ueber Spring AI.
  *
- * <p>Erfordert einen gültigen {@code OPENAI_API_KEY}.</p>
+ * <p>Erfordert einen gueltigen {@code OPENAI_API_KEY}.</p>
  */
 public class OpenAiChatService implements LlmService {
 
     private static final Logger log = LoggerFactory.getLogger(OpenAiChatService.class);
 
-    /** Temperatur 0 für maximale Reproduzierbarkeit bei Triage und Intent. */
+    /** Temperatur 0 fuer maximale Reproduzierbarkeit bei Triage und Intent. */
     private static final double TRIAGE_TEMPERATURE = 0.0;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -58,15 +58,15 @@ public class OpenAiChatService implements LlmService {
     }
 
     /**
-     * Strukturierte Triage-Bewertung über echten OpenAI-Aufruf.
+     * Strukturierte Triage-Bewertung ueber echten OpenAI-Aufruf.
      *
-     * <p>Nutzt Spring AI {@code entity()} für JSON-Schema-basierte Ausgabe.
+     * <p>Nutzt Spring AI {@code entity()} fuer JSON-Schema-basierte Ausgabe.
      * Das Modell liefert ein strukturiertes {@link TriageAssessment} statt
      * Freitext. Unbekannte Aktionen werden bereinigt, bei Fehlern greift
      * ein sicherer Fallback.</p>
      *
      * @param systemPrompt Kontext inkl. Fallbeschreibung und Retrieval-Daten
-     * @param caseDescription Fallbeschreibung für die Triage
+     * @param caseDescription Fallbeschreibung fuer die Triage
      * @return strukturierte Triage-Bewertung (nie {@code null})
      */
     @Override
@@ -102,12 +102,12 @@ public class OpenAiChatService implements LlmService {
     }
 
     /**
-     * Führt eine challengende Zweitbewertung auf Basis einer bestehenden
-     * Triage-Einschätzung durch.
+     * Fuehrt eine challengende Zweitbewertung auf Basis einer bestehenden
+     * Triage-Einschaetzung durch.
      *
-     * <p>Das Modell soll die erste Bewertung kritisch prüfen und nur dann eine
-     * Aktion bestätigen, wenn der bereitgestellte Kontext diese klar trägt.
-     * Bei Fehlern wird die ursprüngliche Bewertung zurückgegeben.</p>
+     * <p>Das Modell soll die erste Bewertung kritisch pruefen und nur dann eine
+     * Aktion bestaetigen, wenn der bereitgestellte Kontext diese klar traegt.
+     * Bei Fehlern wird die urspruengliche Bewertung zurueckgegeben.</p>
      */
     @Override
     public TriageAssessment reviewTriage(String systemPrompt,
@@ -120,7 +120,7 @@ public class OpenAiChatService implements LlmService {
         try {
             TriageAssessment reviewed = chatClient.prompt()
                     .system(buildReviewSystemPrompt(systemPrompt, baseline))
-                    .user("Prüfe kritisch diese Triage-Bewertung für den Fall: " + caseDescription)
+                    .user("Pruefe kritisch diese Triage-Bewertung fuer den Fall: " + caseDescription)
                     .options(OpenAiChatOptions.builder()
                             .temperature(TRIAGE_TEMPERATURE)
                             .build())
@@ -143,10 +143,10 @@ public class OpenAiChatService implements LlmService {
     }
 
     /**
-     * Intent-Erkennung über echten OpenAI-Aufruf.
+     * Intent-Erkennung ueber echten OpenAI-Aufruf.
      *
      * <p>Verwendet {@code content()} statt {@code entity()}, da letzteres bei
-     * bestimmten Modell-/Spring-AI-Kombinationen unzuverlässig ist. Die
+     * bestimmten Modell-/Spring-AI-Kombinationen unzuverlaessig ist. Die
      * JSON-Antwort wird manuell aus dem Antworttext extrahiert.</p>
      */
     @Override
@@ -185,7 +185,7 @@ public class OpenAiChatService implements LlmService {
 
     /**
      * Extrahiert ein ConversationIntent-JSON aus der LLM-Antwort.
-     * Tolerant gegenüber umgebendem Text, Markdown-Code-Blöcken etc.
+     * Tolerant gegenueber umgebendem Text, Markdown-Code-Bloecken etc.
      */
     private ConversationIntent parseIntentJson(String response) {
         try {
@@ -247,11 +247,11 @@ public class OpenAiChatService implements LlmService {
     }
 
     /**
-     * Ergänzt den Basis-Systemprompt um klare Triage-Anweisungen.
+     * Ergaenzt den Basis-Systemprompt um klare Triage-Anweisungen.
      *
      * <p>Nennt die erlaubten Aktionswerte, damit das Modell nur bekannte
-     * Werte liefert. Spring AI hängt automatisch JSON-Schema-Anweisungen
-     * für das Ausgabeformat an.</p>
+     * Werte liefert. Spring AI haengt automatisch JSON-Schema-Anweisungen
+     * fuer das Ausgabeformat an.</p>
      */
     private String buildTriageSystemPrompt(String baseSystemPrompt) {
         return baseSystemPrompt + "\n\n"
@@ -286,15 +286,15 @@ public class OpenAiChatService implements LlmService {
     }
 
     /**
-     * Baut einen Systemprompt für die challengende Zweitbewertung.
+     * Baut einen Systemprompt fuer die challengende Zweitbewertung.
      */
     private String buildReviewSystemPrompt(String baseSystemPrompt, TriageAssessment initialAssessment) {
         return buildTriageSystemPrompt(baseSystemPrompt) + "\n\n"
-                + "--- KONSISTENZ- UND CHALLENGE-PRÜFUNG ---\n"
-                + "Du erhältst zusätzlich eine erste Triage-Bewertung, die du kritisch prüfen sollst.\n"
-                + "Bestätige eine empfohlene Aktion NUR, wenn der bereitgestellte Kontext diese eindeutig trägt.\n"
-                + "Wenn die Evidenz gemischt, unsicher oder widersprüchlich ist, setze recommendedAction auf null.\n"
-                + "Übernimm keine Behauptungen aus der ersten Bewertung ungeprüft.\n\n"
+                + "--- KONSISTENZ- UND CHALLENGE-PRUeFUNG ---\n"
+                + "Du erhaeltst zusaetzlich eine erste Triage-Bewertung, die du kritisch pruefen sollst.\n"
+                + "Bestaetige eine empfohlene Aktion NUR, wenn der bereitgestellte Kontext diese eindeutig traegt.\n"
+                + "Wenn die Evidenz gemischt, unsicher oder widerspruechlich ist, setze recommendedAction auf null.\n"
+                + "Uebernimm keine Behauptungen aus der ersten Bewertung ungeprueft.\n\n"
                 + "Erste Bewertung:\n"
                 + "- summary: " + initialAssessment.summary() + "\n"
                 + "- riskLevel: " + initialAssessment.riskLevel() + "\n"

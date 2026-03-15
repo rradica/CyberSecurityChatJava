@@ -15,9 +15,9 @@ import com.secassist.model.Role;
 import com.secassist.model.ToolActionResult;
 
 /**
- * Simuliert Workflow-/Tool-Aktionen für den Workshop.
+ * Simuliert Workflow-/Tool-Aktionen fuer den Workshop.
  *
- * <p>Keine echte Infrastruktur wird verändert. Alle Aktionen werden
+ * <p>Keine echte Infrastruktur wird veraendert. Alle Aktionen werden
  * in einem In-Memory-Audit-Log protokolliert.</p>
  */
 @Service
@@ -25,18 +25,18 @@ public class IncidentWorkflowService {
 
     private static final Logger log = LoggerFactory.getLogger(IncidentWorkflowService.class);
 
-    /** Audit-Log: caseId → Liste der ausgeführten Aktionen. */
+    /** Audit-Log: caseId → Liste der ausgefuehrten Aktionen. */
     private final Map<String, List<AuditEntry>> auditLog = new ConcurrentHashMap<>();
 
     /** Aktiver Fallzustand: Incident-Effekte pro Case. */
     private final Map<String, CaseState> caseStates = new ConcurrentHashMap<>();
 
     /**
-     * Führt eine simulierte Workflow-Aktion aus.
+     * Fuehrt eine simulierte Workflow-Aktion aus.
      *
      * @param caseId ID des betroffenen Falls
      * @param action Name der Aktion
-     * @param actor  Rolle des Ausführenden
+     * @param actor  Rolle des Ausfuehrenden
      * @return Ergebnis der Aktion
      */
     public ToolActionResult executeAction(String caseId, String action, Role actor) {
@@ -81,7 +81,7 @@ public class IncidentWorkflowService {
     }
 
     /**
-     * Gibt den aktuellen Zustand eines Falls zurück.
+     * Gibt den aktuellen Zustand eines Falls zurueck.
      *
      * @param caseId ID des Falls
      * @return aktueller Fallzustand (nie {@code null})
@@ -91,10 +91,10 @@ public class IncidentWorkflowService {
     }
 
     /**
-     * Gibt das Audit-Log für einen Fall zurück.
+     * Gibt das Audit-Log fuer einen Fall zurueck.
      *
      * @param caseId ID des Falls
-     * @return Liste der Audit-Einträge
+     * @return Liste der Audit-Eintraege
      */
     public List<AuditEntry> getAuditLog(String caseId) {
         return auditLog.getOrDefault(caseId, List.of());
@@ -104,9 +104,9 @@ public class IncidentWorkflowService {
      * Ein Eintrag im Audit-Log.
      *
      * @param timestamp Zeitpunkt der Aktion
-     * @param actor     Rolle des Ausführenden
+     * @param actor     Rolle des Ausfuehrenden
      * @param action    Name der Aktion
-     * @param executed  ob die Aktion ausgeführt wurde
+     * @param executed  ob die Aktion ausgefuehrt wurde
      */
     public record AuditEntry(Instant timestamp, Role actor, String action, boolean executed) {}
 }

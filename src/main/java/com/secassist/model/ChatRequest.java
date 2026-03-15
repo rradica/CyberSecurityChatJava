@@ -3,7 +3,7 @@ package com.secassist.model;
 /**
  * Eingehender Chat-/Aktions-Request vom Frontend.
  *
- * @param role    aktuell gewählte Rolle (z.B. "employee")
+ * @param role    aktuell gewaehlte Rolle (z.B. "employee")
  * @param caseId  ID des aktiven Demo-Falls
  * @param message Benutzernachricht (bei Chat und Workflow)
  * @param action  Aktion: chat, handover, similar_cases, evidence, workflow

@@ -8,7 +8,7 @@ import java.util.List;
  * @param reply           Antworttext (vom LLM oder Mock)
  * @param sources         Liste der genutzten Quellen-IDs
  * @param toolResult      Ergebnis einer Workflow-/Tool-Aktion (optional)
- * @param warnings        Warnungen oder Hinweise für das UI
+ * @param warnings        Warnungen oder Hinweise fuer das UI
  * @param securityContext Verarbeitungskontext mit Rolle, Aktion und Quell-Metadaten (optional)
  */
 public record ChatResponse(

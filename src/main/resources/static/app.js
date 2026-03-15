@@ -78,7 +78,7 @@ function showGreeting() {
 function newConversation() {
     document.getElementById('messages').innerHTML = '';
     activeCaseId = null;
-    // User-Notizen auf dem Server zurücksetzen
+    // User-Notizen auf dem Server zuruecksetzen
     fetch(`${API}/notes`, { method: 'DELETE' }).catch(() => {});
     showGreeting();
 }

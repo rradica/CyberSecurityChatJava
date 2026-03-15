@@ -13,7 +13,7 @@ class DemoCaseServiceTest {
 
     @Test
     void noOracleWithoutSearchQuery() {
-        // Ohne Suchanfrage: nur öffentliche Fälle, kein Oracle
+        // Ohne Suchanfrage: nur oeffentliche Faelle, kein Oracle
         var similar = service.findSimilarCases("suspicious_supplier_invoice", Role.EMPLOYEE);
 
         var restricted = similar.stream()
@@ -24,7 +24,7 @@ class DemoCaseServiceTest {
 
     @Test
     void oracleLeaksWithTargetedQuery() {
-        // Gezielte Suchanfrage mit "supply chain" führt zur eingeschränkten Aggregation
+        // Gezielte Suchanfrage mit "supply chain" fuehrt zur eingeschraenkten Aggregation
         var similar = service.findSimilarCases("suspicious_supplier_invoice", Role.EMPLOYEE,
                 "Gab es \u00e4hnliche Supply-Chain-Vorf\u00e4lle?");
 
@@ -37,7 +37,7 @@ class DemoCaseServiceTest {
 
     @Test
     void oracleDoesNotLeakWithGenericQuery() {
-        // Generische Suchanfrage: keine Keywords die interne Fälle matchen
+        // Generische Suchanfrage: keine Keywords die interne Faelle matchen
         var similar = service.findSimilarCases("suspicious_supplier_invoice", Role.EMPLOYEE,
                 "Gibt es \u00e4hnliche F\u00e4lle?");
 
