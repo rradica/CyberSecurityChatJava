@@ -68,10 +68,9 @@ Dann im Browser: **http://localhost:8080**
 
 Hinweis: Fuer LLM-gestuetzte Requests wird weiterhin ein gueltiger `OPENAI_API_KEY` benoetigt.
 
-Falls ein Codespace beim Container-Build scheitert, verwendet die Konfiguration nun
-ein festes, von Dev Containers uebliches Java-21-Image
-`mcr.microsoft.com/devcontainers/java:1-21-bookworm` statt eines ungueltigen bzw.
-zu generischen Tags.
+Falls ein Codespace beim Container-Build mit einzelnen Dev-Container-Images scheitert,
+verwendet das Repository nun stattdessen einen einfachen Dockerfile-basierten
+Container auf Basis von `maven:3.9.9-eclipse-temurin-21`.
 
 ## Technischer Stack
 

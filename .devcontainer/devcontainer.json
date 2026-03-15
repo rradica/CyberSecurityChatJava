@@ -1,6 +1,8 @@
 {
   "name": "SecAssist Workshop",
-  "image": "mcr.microsoft.com/devcontainers/java:1-21-bookworm",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
   "forwardPorts": [8080],
   "portsAttributes": {
     "8080": {
