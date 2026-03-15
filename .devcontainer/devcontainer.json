@@ -1,12 +1,6 @@
 {
   "name": "SecAssist Workshop",
-  "image": "mcr.microsoft.com/devcontainers/java:21",
-  "features": {
-    "ghcr.io/devcontainers/features/java:1": {
-      "version": "21",
-      "installMaven": "true"
-    }
-  },
+  "image": "mcr.microsoft.com/devcontainers/java:1-21-bookworm",
   "forwardPorts": [8080],
   "portsAttributes": {
     "8080": {
