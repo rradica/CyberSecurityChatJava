@@ -43,6 +43,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     switchView('cases');
 });
 
+function resetApp() {
+    state.sending = false;
+    state.activeCaseId = null;
+    state.activeCaseBriefing = null;
+    state.currentView = 'cases';
+    state.messageCounter = 0;
+    state.messageBuffers = {};
+    state.activeBufferKey = null;
+
+    const input = document.getElementById('chatInput');
+    input.value = '';
+    autoResizeInput();
+
+    fetch(`${API}/notes`, { method: 'DELETE' }).catch(() => {});
+
+    renderCaseInbox();
+    renderActiveCaseSummary();
+    renderChatHeader();
+    renderActionChips();
+
+    const messages = document.getElementById('messages');
+    messages.innerHTML = '';
+
+    switchView('cases');
+}
+
 function autoResizeInput() {
     const input = document.getElementById('chatInput');
     input.style.height = 'auto';

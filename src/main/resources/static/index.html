@@ -31,9 +31,19 @@
                     </select>
                 </label>
 
-                <div class="system-state">
-                    <span class="dot online"></span>
-                    <span>Arbeitsplatz verbunden</span>
+                <div class="header-tools">
+                    <div class="system-state">
+                        <span class="dot online"></span>
+                        <span>Arbeitsplatz verbunden</span>
+                    </div>
+
+                    <button class="btn-header-reset" onclick="resetApp()" type="button" title="App zuruecksetzen und von vorn starten">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M3 12a9 9 0 1 0 3-6.7"/>
+                            <path d="M3 4v5h5"/>
+                        </svg>
+                        <span>Neu starten</span>
+                    </button>
                 </div>
             </div>
         </header>
