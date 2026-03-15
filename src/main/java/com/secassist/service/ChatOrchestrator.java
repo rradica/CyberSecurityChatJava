@@ -506,7 +506,7 @@ public class ChatOrchestrator {
     private SecurityContext buildSecurityContext(Role role, String action, String caseId,
                                                  List<DocumentChunk> context) {
         List<SourceMeta> sourceMetas = context.stream()
-                .map(c -> new SourceMeta(c.docId(), c.title(), c.trustLevel(), c.sourceType()))
+                .map(c -> new SourceMeta(c.docId(), c.title(), c.trustLevel(), c.sourceType(), c.classification()))
                 .toList();
         return new SecurityContext(role.name().toLowerCase(), action, caseId, sourceMetas);
     }

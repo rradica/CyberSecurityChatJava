@@ -7,79 +7,115 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <div class="shell">
+        <header class="app-header">
+            <div class="brand-block">
+                <div class="brand-mark">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                     </svg>
-                    <span>SecAssist</span>
                 </div>
-                <p class="tagline">Sicherheitsoperationen</p>
+                <div>
+                    <div class="brand-title">SecAssist</div>
+                    <p class="brand-subtitle">Security Incident Workspace</p>
+                </div>
             </div>
 
-            <div class="sidebar-section">
-                <label for="roleSelect">Ihre Rolle</label>
-                <select id="roleSelect">
-                    <option value="employee" selected>Mitarbeiter</option>
-                    <option value="security_analyst">Security-Analyst</option>
-                    <option value="contractor">Externer</option>
-                </select>
-            </div>
+            <div class="header-actions">
+                <label class="role-control" for="roleSelect">
+                    <span>Aktive Rolle</span>
+                    <select id="roleSelect">
+                        <option value="employee" selected>Mitarbeiter</option>
+                        <option value="security_analyst">Security-Analyst</option>
+                        <option value="contractor">Externer</option>
+                    </select>
+                </label>
 
-            <div class="sidebar-section">
-                <label for="caseSelect">Demo-Fall</label>
-                <select id="caseSelect">
-                    <option value="">Bitte Fall auswählen</option>
-                </select>
-            </div>
-
-            <button class="btn-new-chat" onclick="newConversation()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                Neues Gespraech
-            </button>
-
-            <div class="sidebar-footer">
-                <div class="status-indicator">
+                <div class="system-state">
                     <span class="dot online"></span>
-                    <span>System aktiv</span>
+                    <span>Arbeitsplatz verbunden</span>
                 </div>
             </div>
-        </aside>
+        </header>
 
-        <!-- Main Chat Area -->
-        <main class="chat-main">
-            <header class="chat-header">
-                <h1>Sicherheitsvorfall-Assistent</h1>
-                <span class="role-badge" id="roleBadge">Mitarbeiter</span>
-            </header>
-
-            <section class="case-panel" id="casePanel">
-                <div class="case-panel-empty">
-                    <h2>Fall auswählen</h2>
-                    <p>Waehlen Sie zuerst einen Demo-Fall aus. SecAssist zeigt dann eine kompakte Lagebeschreibung, Artefakte und moegliche naechste Schritte an.</p>
+        <main class="workspace">
+            <section class="screen case-screen active" id="caseView">
+                <div class="hero-card">
+                    <div>
+                        <p class="eyebrow">Persoenliche Falluebersicht</p>
+                        <h1 id="queueTitle">Ihnen zugewiesene Faelle</h1>
+                        <p id="queueDescription">
+                            Waehlen Sie einen Fall aus Ihrer aktuellen Warteschlange aus, um die Bearbeitung im Chat zu starten.
+                        </p>
+                    </div>
+                    <div class="hero-side-note">
+                        <strong>Hinweis</strong>
+                        <span>Meta-Informationen werden erst im Bearbeitungsbereich und nur auf Wunsch pro Nachricht eingeblendet.</span>
+                    </div>
                 </div>
+
+                <div class="queue-metrics" id="queueMetrics"></div>
+                <div class="case-grid" id="caseList"></div>
             </section>
 
-            <div class="messages" id="messages">
-            </div>
+            <section class="screen chat-screen" id="chatView">
+                <div class="chat-layout">
+                    <aside class="case-rail">
+                        <button class="btn-back" onclick="returnToInbox()" type="button">
+                            <span aria-hidden="true">←</span>
+                            <span>Zur Falluebersicht</span>
+                        </button>
 
-            <div class="input-area">
-                <div class="input-wrapper">
-                    <textarea id="chatInput" rows="1"
-                              placeholder="Beschreiben Sie einen Sicherheitsvorfall oder stellen Sie eine Frage..."
-                              autocomplete="off"></textarea>
-                    <button onclick="sendMessage()" id="btnSend" class="btn-send" title="Senden">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                        </svg>
-                    </button>
+                        <section class="summary-card" id="activeCaseSummary">
+                            <div class="summary-empty">
+                                <h2>Kein Fall geoeffnet</h2>
+                                <p>Waehlen Sie zuerst einen zugewiesenen Fall aus Ihrer Uebersicht aus.</p>
+                            </div>
+                        </section>
+
+                        <section class="summary-card">
+                            <div class="section-headline">Schnellaktionen</div>
+                            <div class="action-chips" id="actionChips"></div>
+                        </section>
+                    </aside>
+
+                    <section class="chat-stage">
+                        <header class="chat-header">
+                            <div>
+                                <p class="eyebrow">Fallbearbeitung</p>
+                                <h2 id="chatTitle">Bitte zuerst einen Fall auswaehlen</h2>
+                                <p class="chat-subtitle" id="chatSubtitle">Der Chat wird geoeffnet, sobald ein zugewiesener Fall gestartet wurde.</p>
+                            </div>
+
+                            <div class="header-badges">
+                                <span class="role-badge" id="roleBadge">Mitarbeiter</span>
+                                <span class="sensitivity-badge sensitivity-neutral" id="caseSensitivityBadge">Keine Auswahl</span>
+                            </div>
+                        </header>
+
+                        <div class="messages" id="messages"></div>
+
+                        <div class="input-area">
+                            <div class="composer-note">
+                                Im Chat werden nur typische Arbeitsinformationen angezeigt. Technische Metadaten lassen sich je Nachricht optional einblenden.
+                            </div>
+                            <div class="input-wrapper">
+                                <textarea id="chatInput" rows="1"
+                                          placeholder="Frage zum ausgewaehlten Fall stellen oder Einschaetzung anfordern..."
+                                          autocomplete="off"></textarea>
+                                <div class="composer-buttons">
+                                    <button class="btn-secondary" onclick="newConversation()" type="button">Verlauf leeren</button>
+                                    <button onclick="sendMessage()" id="btnSend" class="btn-send" title="Senden" type="button">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
                 </div>
-            </div>
+            </section>
         </main>
     </div>
 

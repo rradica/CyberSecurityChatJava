@@ -1,494 +1,846 @@
-// SecAssist – Conversational Chat Frontend
-
 const API = '/api';
-let sending = false;
-let activeCaseId = null;
-let activeCaseBriefing = null;
-let availableCases = [];
 
-// --- Initialization ---
-document.addEventListener('DOMContentLoaded', () => {
+const state = {
+    sending: false,
+    activeCaseId: null,
+    activeCaseBriefing: null,
+    availableCases: [],
+    currentView: 'cases',
+    messageCounter: 0
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
     const input = document.getElementById('chatInput');
     const roleSelect = document.getElementById('roleSelect');
-    const caseSelect = document.getElementById('caseSelect');
 
-    // Auto-resize textarea
-    input.addEventListener('input', () => {
-        input.style.height = 'auto';
-        input.style.height = Math.min(input.scrollHeight, 120) + 'px';
-    });
-
-    // Enter to send, Shift+Enter for newline
-    input.addEventListener('keydown', e => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
+    input.addEventListener('input', autoResizeInput);
+    input.addEventListener('keydown', event => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
             sendMessage();
         }
     });
 
-    // Update header badge when role changes
     roleSelect.addEventListener('change', () => {
-        const badge = document.getElementById('roleBadge');
-        const text = roleSelect.selectedOptions[0]?.textContent || roleSelect.value;
-        badge.textContent = text;
-    });
-
-    caseSelect.addEventListener('change', async () => {
-        const nextCaseId = caseSelect.value;
-        if (!nextCaseId) {
-            activeCaseId = null;
-            activeCaseBriefing = null;
-            renderCasePanel();
+        updateRolePresentation();
+        renderCaseInbox();
+        if (state.activeCaseId) {
+            renderActiveCaseSummary();
+            renderChatHeader();
             newConversation();
-            return;
         }
-        await loadCase(nextCaseId);
     });
 
-    loadCases().then(() => {
-        renderCasePanel();
-        showGreeting();
-    });
+    await loadCases();
+    updateRolePresentation();
+    renderCaseInbox();
+    renderActionChips();
+    setComposerEnabled(false);
+    switchView('cases');
 });
 
-// --- Public Functions ---
-
-function sendSuggestion(text) {
-    document.getElementById('chatInput').value = text;
-    sendMessage();
-}
-
-function showGreeting() {
-    const container = document.getElementById('messages');
-    container.innerHTML = '';
-    const div = document.createElement('div');
-    div.className = 'chat-msg assistant';
-
-    const label = document.createElement('div');
-    label.className = 'label';
-    label.textContent = 'SecAssist';
-    div.appendChild(label);
-
-    const content = document.createElement('div');
-    const greetingText = activeCaseBriefing
-        ? `Guten Tag! Der Fall **${activeCaseBriefing.title}** ist geladen.\n\n`
-            + `Sie koennen den Fall frei beschreiben oder einen der vorgeschlagenen Einstiege nutzen.`
-        : 'Guten Tag! Ich bin SecAssist, Ihr Assistent f\u00fcr Sicherheitsvorf\u00e4lle.\n\n'
-            + 'Waehlen Sie bitte zuerst links einen Demo-Fall aus. Danach erhalten Sie eine Lagebeschreibung, sichtbare Artefakte und sinnvolle naechste Schritte.';
-    content.innerHTML = simpleMarkdown(greetingText);
-    div.appendChild(content);
-
-    if (activeCaseBriefing?.recommendedQuestions?.length) {
-        const suggestions = document.createElement('div');
-        suggestions.className = 'suggestions';
-        for (const question of activeCaseBriefing.recommendedQuestions) {
-            const btn = document.createElement('button');
-            btn.textContent = question;
-            btn.onclick = () => sendSuggestion(question);
-            suggestions.appendChild(btn);
-        }
-        div.appendChild(suggestions);
-    }
-
-    container.appendChild(div);
-}
-
-function newConversation() {
-    document.getElementById('messages').innerHTML = '';
-    // User-Notizen auf dem Server zuruecksetzen
-    fetch(`${API}/notes`, { method: 'DELETE' }).catch(() => {});
-    showGreeting();
-}
-
-async function sendMessage() {
-    if (sending) return;
+function autoResizeInput() {
     const input = document.getElementById('chatInput');
-    const message = input.value.trim();
-    if (!message) return;
-
-    if (!activeCaseId) {
-        appendMessage('error', 'Bitte wählen Sie zuerst einen Demo-Fall aus.');
-        return;
-    }
-
-    // Remove suggestion buttons when user sends first message
-    const suggestions = document.querySelector('.suggestions');
-    if (suggestions) suggestions.remove();
-
-    appendMessage('user', message);
-    input.value = '';
     input.style.height = 'auto';
+    input.style.height = `${Math.min(input.scrollHeight, 120)}px`;
+}
 
-    const body = {
-        role: document.getElementById('roleSelect').value,
-        message: message,
-        caseId: activeCaseId
+function updateRolePresentation() {
+    const roleSelect = document.getElementById('roleSelect');
+    const role = roleSelect.value;
+    const label = roleSelect.selectedOptions[0]?.textContent || role;
+
+    document.getElementById('roleBadge').textContent = label;
+
+    const queueCopy = {
+        employee: {
+            title: 'Ihnen zugewiesene Faelle',
+            description: 'Die folgenden Meldungen liegen aktuell in Ihrer Bearbeitung oder warten auf Ihre erste Einschaetzung.'
+        },
+        security_analyst: {
+            title: 'Aktive Faelle im Security Desk',
+            description: 'Sie sehen den aktuellen Eingang fuer die Security-Triage und koennen direkt in die Fallbearbeitung wechseln.'
+        },
+        contractor: {
+            title: 'Fuer Sie freigegebene Faelle',
+            description: 'Diese Faelle wurden fuer Ihre aktuelle Mitarbeit freigegeben. Waehrend der Bearbeitung sehen Sie nur die vorgesehenen Informationen.'
+        }
     };
 
-    sending = true;
-    document.getElementById('btnSend').disabled = true;
-    const typing = showTyping();
-
-    try {
-        const res = await fetch(`${API}/conversation`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-
-        removeTyping(typing);
-
-        if (!res.ok) {
-        appendMessage('error', `Es ist ein Fehler aufgetreten (${res.status}). Bitte versuchen Sie es erneut.`);
-            return;
-        }
-
-        const data = await res.json();
-        appendResponse(data);
-    } catch (e) {
-        removeTyping(typing);
-        appendMessage('error', 'Verbindungsfehler. Bitte pr\u00fcfen Sie Ihre Netzwerkverbindung.');
-    } finally {
-        sending = false;
-        document.getElementById('btnSend').disabled = false;
-    }
+    const copy = queueCopy[role] || queueCopy.employee;
+    document.getElementById('queueTitle').textContent = copy.title;
+    document.getElementById('queueDescription').textContent = copy.description;
 }
 
 async function loadCases() {
-    const res = await fetch(`${API}/cases`);
-    if (!res.ok) return;
-    availableCases = await res.json();
-    const select = document.getElementById('caseSelect');
-    select.innerHTML = '<option value="">Bitte Fall auswählen</option>';
-    for (const demoCase of availableCases) {
-        const option = document.createElement('option');
-        option.value = demoCase.id;
-        option.textContent = demoCase.title;
-        select.appendChild(option);
+    const response = await fetch(`${API}/cases`);
+    if (!response.ok) {
+        state.availableCases = [];
+        return;
+    }
+    state.availableCases = await response.json();
+}
+
+function renderCaseInbox() {
+    renderQueueMetrics();
+
+    const list = document.getElementById('caseList');
+    list.innerHTML = '';
+
+    if (!state.availableCases.length) {
+        list.innerHTML = '<div class="summary-card"><h2>Keine Faelle verfuegbar</h2><p>Momentan konnten keine Demo-Faelle geladen werden.</p></div>';
+        return;
+    }
+
+    for (const demoCase of state.availableCases) {
+        const card = document.createElement('article');
+        card.className = `case-card ${demoCase.id === state.activeCaseId ? 'active' : ''}`;
+
+        const active = demoCase.id === state.activeCaseId;
+        const statusText = active ? 'In Bearbeitung' : 'Neu zugewiesen';
+        const buttonText = active ? 'Bearbeitung fortsetzen' : 'Fall oeffnen';
+
+        card.innerHTML = `
+            <div class="case-card-header">
+                <div>
+                    <div class="case-title">${escHtml(demoCase.title)}</div>
+                    <p class="case-description">${escHtml(demoCase.description)}</p>
+                </div>
+                <span class="severity-badge severity-${escHtml(demoCase.severity)}">${escHtml(translateSeverity(demoCase.severity))}</span>
+            </div>
+
+            <div class="case-card-meta">
+                <span class="chip">${escHtml(translateCaseType(demoCase.type))}</span>
+                <span class="status-chip">${statusText}</span>
+            </div>
+
+            <div class="case-card-footer">
+                <div class="message-caption">Fall-ID: ${escHtml(demoCase.id)}</div>
+                <button class="btn-primary" type="button">${buttonText}</button>
+            </div>
+        `;
+
+        card.querySelector('button').addEventListener('click', () => openCase(demoCase.id));
+        list.appendChild(card);
     }
 }
 
-async function loadCase(caseId) {
-    activeCaseId = caseId;
-    const res = await fetch(`${API}/cases/${caseId}/briefing`);
-    activeCaseBriefing = res.ok ? await res.json() : null;
-    renderCasePanel();
+function renderQueueMetrics() {
+    const metrics = document.getElementById('queueMetrics');
+    const total = state.availableCases.length;
+    const highPriority = state.availableCases.filter(item => item.severity === 'high' || item.severity === 'critical').length;
+    const active = state.activeCaseId ? 1 : 0;
+
+    metrics.innerHTML = `
+        <div class="metric-card">
+            <div class="metric-label">Offene Faelle</div>
+            <div class="metric-value">${total}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Priorisierte Bearbeitung</div>
+            <div class="metric-value">${highPriority}</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Aktiver Arbeitsplatz</div>
+            <div class="metric-value">${active ? '1 Fall' : 'Bereit'}</div>
+        </div>
+    `;
+}
+
+async function openCase(caseId) {
+    if (caseId === state.activeCaseId && state.activeCaseBriefing) {
+        switchView('chat');
+        return;
+    }
+
+    const response = await fetch(`${API}/cases/${caseId}/briefing`);
+    state.activeCaseBriefing = response.ok ? await response.json() : null;
+    state.activeCaseId = caseId;
+
+    renderCaseInbox();
+    renderActiveCaseSummary();
+    renderChatHeader();
+    renderActionChips();
+    switchView('chat');
     newConversation();
 }
 
-function renderCasePanel() {
-    const panel = document.getElementById('casePanel');
-    if (!activeCaseBriefing) {
-        panel.innerHTML = `
-            <div class="case-panel-empty">
-                <h2>Fall auswählen</h2>
-                <p>Waehlen Sie zuerst einen Demo-Fall aus. SecAssist zeigt dann eine kompakte Lagebeschreibung, Artefakte und moegliche naechste Schritte an.</p>
+function returnToInbox() {
+    switchView('cases');
+}
+
+function switchView(viewName) {
+    state.currentView = viewName;
+    document.getElementById('caseView').classList.toggle('active', viewName === 'cases');
+    document.getElementById('chatView').classList.toggle('active', viewName === 'chat');
+}
+
+function renderActiveCaseSummary() {
+    const container = document.getElementById('activeCaseSummary');
+    if (!state.activeCaseBriefing) {
+        container.innerHTML = `
+            <div class="summary-empty">
+                <h2>Kein Fall geoeffnet</h2>
+                <p>Waehlen Sie zuerst einen zugewiesenen Fall aus Ihrer Uebersicht aus.</p>
             </div>`;
         return;
     }
 
-    const facts = (activeCaseBriefing.initialFacts || [])
+    const facts = (state.activeCaseBriefing.initialFacts || [])
         .map(fact => `<li>${escHtml(fact)}</li>`)
         .join('');
-    const artifacts = (activeCaseBriefing.artifacts || [])
+
+    const artifacts = (state.activeCaseBriefing.artifacts || [])
         .map(artifact => `
-            <article class="artifact-card">
-                <div class="artifact-type">${escHtml(artifact.type)}</div>
-                <h4>${escHtml(artifact.title)}</h4>
+            <div class="artifact-item">
+                <span class="chip">${escHtml(formatArtifactType(artifact.type))}</span>
+                <strong>${escHtml(artifact.title)}</strong>
                 <p>${escHtml(artifact.preview)}</p>
-            </article>`)
+            </div>`)
         .join('');
 
-    panel.innerHTML = `
-        <div class="case-panel-header">
-            <div>
-                <div class="case-kicker">Aktiver Fall</div>
-                <h2>${escHtml(activeCaseBriefing.title)}</h2>
-                <p class="case-summary">${escHtml(activeCaseBriefing.summary)}</p>
-            </div>
-            <div class="case-department">${escHtml(activeCaseBriefing.department)}</div>
+    container.innerHTML = `
+        <div class="section-headline">Aktiver Fall</div>
+        <h2>${escHtml(state.activeCaseBriefing.title)}</h2>
+        <p class="summary-lead">${escHtml(state.activeCaseBriefing.summary)}</p>
+        <div class="case-card-meta">
+            <span class="chip">${escHtml(state.activeCaseBriefing.department)}</span>
+            <span class="severity-badge severity-${escHtml(getActiveCaseSeverity())}">${escHtml(translateSeverity(getActiveCaseSeverity()))}</span>
         </div>
-        <div class="case-columns">
-            <section class="case-section">
-                <h3>Bekannte Ausgangsfakten</h3>
-                <ul>${facts}</ul>
-            </section>
-            <section class="case-section">
-                <h3>Artefakte</h3>
-                <div class="artifact-grid">${artifacts}</div>
-            </section>
-        </div>
-        <section class="case-section case-actions">
-            <h3>Was möchten Sie als Nächstes tun?</h3>
-            <div class="action-chips">
-                <button onclick="runCaseAction('chat')">Fall analysieren</button>
-                <button onclick="runCaseAction('evidence')">Quellen anzeigen</button>
-                <button onclick="runCaseAction('similar_cases')">Ähnliche Fälle prüfen</button>
-                <button onclick="runCaseAction('handover')">Übergabe vorbereiten</button>
-                <button onclick="prefillNote()">Notiz hinzufügen</button>
-                <button onclick="runCaseAction('workflow')">Triage neu bewerten</button>
-            </div>
-        </section>`;
+
+        <div class="section-headline" style="margin-top:16px;">Bekannte Fakten</div>
+        <ul class="facts-list">${facts}</ul>
+
+        <div class="section-headline" style="margin-top:16px;">Sichtbare Artefakte</div>
+        <div class="artifact-list">${artifacts}</div>
+    `;
+}
+
+function renderActionChips() {
+    const container = document.getElementById('actionChips');
+    const actions = [
+        { key: 'chat', label: 'Fall analysieren' },
+        { key: 'evidence', label: 'Quellen anzeigen' },
+        { key: 'similar_cases', label: 'Aehnliche Faelle' },
+        { key: 'handover', label: 'Uebergabe vorbereiten' },
+        { key: 'workflow', label: 'Triage neu bewerten' },
+        { key: 'note', label: 'Notiz erfassen' }
+    ];
+
+    container.innerHTML = '';
+    for (const action of actions) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = action.label;
+        button.disabled = !state.activeCaseId || state.sending;
+        button.addEventListener('click', () => {
+            if (action.key === 'note') {
+                prefillNote();
+                return;
+            }
+            runCaseAction(action.key);
+        });
+        container.appendChild(button);
+    }
+}
+
+function renderChatHeader() {
+    const title = document.getElementById('chatTitle');
+    const subtitle = document.getElementById('chatSubtitle');
+    const badge = document.getElementById('caseSensitivityBadge');
+
+    if (!state.activeCaseBriefing) {
+        title.textContent = 'Bitte zuerst einen Fall auswaehlen';
+        subtitle.textContent = 'Der Chat wird geoeffnet, sobald ein zugewiesener Fall gestartet wurde.';
+        badge.className = 'sensitivity-badge sensitivity-neutral';
+        badge.textContent = 'Keine Auswahl';
+        setComposerEnabled(false);
+        return;
+    }
+
+    title.textContent = state.activeCaseBriefing.title;
+    subtitle.textContent = `${state.activeCaseBriefing.department} · Chat zur laufenden Fallbearbeitung`;
+    badge.className = `sensitivity-badge sensitivity-${severityToSensitivity(getActiveCaseSeverity())}`;
+    badge.textContent = `Fallstufe: ${translateSeverity(getActiveCaseSeverity())}`;
+    setComposerEnabled(true);
+}
+
+function setComposerEnabled(enabled) {
+    document.getElementById('chatInput').disabled = !enabled;
+    document.getElementById('btnSend').disabled = !enabled || state.sending;
+    renderActionChips();
+}
+
+function newConversation() {
+    const messages = document.getElementById('messages');
+    messages.innerHTML = '';
+    fetch(`${API}/notes`, { method: 'DELETE' }).catch(() => {});
+    if (state.activeCaseBriefing) {
+        showGreeting();
+    }
+}
+
+function showGreeting() {
+    const questionButtons = (state.activeCaseBriefing?.recommendedQuestions || []).map(question => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = question;
+        button.addEventListener('click', () => sendSuggestion(question));
+        return button;
+    });
+
+    appendMessageCard({
+        type: 'assistant',
+        sender: 'SecAssist',
+        text: `Der Fall **${state.activeCaseBriefing.title}** ist zur Bearbeitung geoeffnet. Ich unterstuetze Sie bei Einordnung, Evidenzsichtung und der Vorbereitung naechster Schritte.`,
+        sensitivity: deriveGreetingSensitivity(),
+        meta: buildMetaInfo({
+            role: translateRole(document.getElementById('roleSelect').value),
+            action: 'Fallstart',
+            caseId: state.activeCaseId,
+            note: 'Initiale UI-Systemnachricht'
+        }),
+        extraNodes: questionButtons.length ? [renderSuggestions(questionButtons)] : []
+    });
+}
+
+function sendSuggestion(text) {
+    const input = document.getElementById('chatInput');
+    input.value = text;
+    autoResizeInput();
+    sendMessage();
+}
+
+async function sendMessage() {
+    if (state.sending || !state.activeCaseId) {
+        return;
+    }
+
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    if (!message) {
+        return;
+    }
+
+    appendMessageCard({
+        type: 'user',
+        sender: 'Sie',
+        text: message,
+        sensitivity: { level: 'neutral', label: 'Benutzereingabe' },
+        meta: buildMetaInfo({
+            role: translateRole(document.getElementById('roleSelect').value),
+            action: 'Benutzernachricht',
+            caseId: state.activeCaseId,
+            note: 'Freitextanfrage im Fallchat'
+        })
+    });
+
+    input.value = '';
+    autoResizeInput();
+
+    state.sending = true;
+    setComposerEnabled(true);
+    const typingNode = showTypingIndicator();
+
+    try {
+        const response = await fetch(`${API}/conversation`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                role: document.getElementById('roleSelect').value,
+                message,
+                caseId: state.activeCaseId
+            })
+        });
+
+        removeTypingIndicator(typingNode);
+
+        if (!response.ok) {
+            appendError('Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.');
+            return;
+        }
+
+        const data = await response.json();
+        appendAssistantResponse(data);
+    } catch (_error) {
+        removeTypingIndicator(typingNode);
+        appendError('Verbindungsfehler. Bitte pruefen Sie Ihre Netzwerkverbindung.');
+    } finally {
+        state.sending = false;
+        setComposerEnabled(true);
+    }
 }
 
 function prefillNote() {
+    if (!state.activeCaseId) {
+        return;
+    }
     const input = document.getElementById('chatInput');
     input.value = 'Notiz: ';
+    autoResizeInput();
     input.focus();
 }
 
 async function runCaseAction(action) {
-    if (!activeCaseId || sending) return;
+    if (!state.activeCaseId || state.sending) {
+        return;
+    }
 
-    const role = document.getElementById('roleSelect').value;
-    const title = activeCaseBriefing?.title || activeCaseId;
-    const presets = {
+    const title = state.activeCaseBriefing?.title || state.activeCaseId;
+    const presetMap = {
         chat: {
-            label: 'Aktion: Fall analysieren',
-            message: `Bitte analysiere den Fall "${title}" und nenne die wichtigsten Risiken sowie nächsten Schritte.`
+            label: 'Schnellaktion: Fall analysieren',
+            message: `Bitte analysiere den Fall "${title}" und nenne die wichtigsten Risiken sowie naechste Schritte.`
         },
         evidence: {
-            label: 'Aktion: Quellen anzeigen',
+            label: 'Schnellaktion: Quellen anzeigen',
             message: ''
         },
         similar_cases: {
-            label: 'Aktion: Ähnliche Fälle prüfen',
-            message: `Bitte zeige ähnliche Fälle zu "${title}".`
+            label: 'Schnellaktion: Aehnliche Faelle',
+            message: `Bitte zeige aehnliche Faelle zu "${title}".`
         },
         handover: {
-            label: 'Aktion: Übergabe vorbereiten',
-            message: `Bitte erstelle einen Übergabe-Entwurf für den Fall "${title}".`
+            label: 'Schnellaktion: Uebergabe vorbereiten',
+            message: `Bitte erstelle einen Uebergabe-Entwurf fuer den Fall "${title}".`
         },
         workflow: {
-            label: 'Aktion: Triage neu bewerten',
-            message: 'Bitte bewerte das Risiko dieses Falls und schlage eine passende nächste Triage-Aktion vor.'
+            label: 'Schnellaktion: Triage neu bewerten',
+            message: 'Bitte bewerte das Risiko dieses Falls und schlage die passende naechste Triage-Aktion vor.'
         }
     };
-    const preset = presets[action];
-    if (!preset) return;
 
-    const suggestions = document.querySelector('.suggestions');
-    if (suggestions) suggestions.remove();
-    appendMessage('user', preset.label);
+    const preset = presetMap[action];
+    if (!preset) {
+        return;
+    }
 
-    sending = true;
-    document.getElementById('btnSend').disabled = true;
-    const typing = showTyping();
+    appendMessageCard({
+        type: 'user',
+        sender: 'Sie',
+        text: preset.label,
+        sensitivity: { level: 'neutral', label: 'Arbeitsaktion' },
+        meta: buildMetaInfo({
+            role: translateRole(document.getElementById('roleSelect').value),
+            action: translateAction(action),
+            caseId: state.activeCaseId,
+            note: 'Ausgeloest ueber Schnellaktion'
+        })
+    });
+
+    state.sending = true;
+    setComposerEnabled(true);
+    const typingNode = showTypingIndicator();
 
     try {
-        const res = await fetch(`${API}/chat`, {
+        const response = await fetch(`${API}/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                role,
-                caseId: activeCaseId,
+                role: document.getElementById('roleSelect').value,
+                caseId: state.activeCaseId,
                 message: preset.message,
                 action
             })
         });
 
-        removeTyping(typing);
-        if (!res.ok) {
-            appendMessage('error', `Es ist ein Fehler aufgetreten (${res.status}). Bitte versuchen Sie es erneut.`);
+        removeTypingIndicator(typingNode);
+
+        if (!response.ok) {
+            appendError('Die Aktion konnte nicht verarbeitet werden. Bitte versuchen Sie es erneut.');
             return;
         }
 
-        const data = await res.json();
-        appendResponse(data);
-    } catch (e) {
-        removeTyping(typing);
-        appendMessage('error', 'Verbindungsfehler. Bitte prüfen Sie Ihre Netzwerkverbindung.');
+        const data = await response.json();
+        appendAssistantResponse(data);
+    } catch (_error) {
+        removeTypingIndicator(typingNode);
+        appendError('Verbindungsfehler. Bitte pruefen Sie Ihre Netzwerkverbindung.');
     } finally {
-        sending = false;
-        document.getElementById('btnSend').disabled = false;
+        state.sending = false;
+        setComposerEnabled(true);
     }
 }
 
-// --- Rendering ---
+function appendAssistantResponse(data) {
+    const sensitivity = deriveResponseSensitivity(data);
+    const extraNodes = [];
 
-function appendMessage(type, text) {
-    const container = document.getElementById('messages');
-    const div = document.createElement('div');
-    div.className = `chat-msg ${type}`;
-
-    if (type === 'user') {
-        const label = document.createElement('div');
-        label.className = 'label';
-        label.textContent = 'Sie';
-        div.appendChild(label);
-    }
-
-    const content = document.createElement('div');
-    content.innerHTML = simpleMarkdown(text);
-    div.appendChild(content);
-
-    container.appendChild(div);
-    scrollToBottom();
-}
-
-function appendResponse(data) {
-    const container = document.getElementById('messages');
-    const div = document.createElement('div');
-    div.className = 'chat-msg assistant';
-
-    const label = document.createElement('div');
-    label.className = 'label';
-    label.textContent = 'SecAssist';
-    div.appendChild(label);
-
-    const content = document.createElement('div');
-    content.innerHTML = simpleMarkdown(data.reply || 'Ihre Anfrage konnte nicht verarbeitet werden. Bitte versuchen Sie es erneut.');
-    div.appendChild(content);
-
-    // Tool Result – compact: status badge + action name
     if (data.toolResult) {
-        const tr = document.createElement('div');
-        tr.className = 'tool-result status-' + (data.toolResult.status || 'unknown');
-        const statusLabel = translateStatus(data.toolResult.status);
-        tr.innerHTML = `<span class="tr-status">${escHtml(statusLabel)}</span> `
-            + `<strong>${escHtml(data.toolResult.action)}</strong>`;
-        div.appendChild(tr);
+        extraNodes.push(renderToolResult(data.toolResult));
     }
 
-    // Warnings – only critical indicators
-    if (data.warnings && data.warnings.length > 0) {
-        const warnings = document.createElement('div');
-        warnings.className = 'warnings-list';
-        for (const w of data.warnings) {
-            const item = document.createElement('div');
-            item.className = 'warning-item ' + classifyWarning(w);
-            item.textContent = w;
-            warnings.appendChild(item);
-        }
-        div.appendChild(warnings);
+    if (data.warnings && data.warnings.length) {
+        extraNodes.push(renderWarnings(data.warnings));
     }
 
-    // Security Context – collapsible details
-    if (data.securityContext) {
-        div.appendChild(renderCollapsibleContext(data.securityContext));
-    }
-
-    container.appendChild(div);
-    scrollToBottom();
+    appendMessageCard({
+        type: 'assistant',
+        sender: 'SecAssist',
+        text: data.reply || 'Es konnte keine Antwort erzeugt werden.',
+        sensitivity,
+        meta: buildAssistantMeta(data, sensitivity),
+        extraNodes
+    });
 }
 
-function renderCollapsibleContext(ctx) {
-    const wrapper = document.createElement('details');
-    wrapper.className = 'security-context';
+function appendError(text) {
+    appendMessageCard({
+        type: 'error',
+        sender: 'System',
+        text,
+        sensitivity: { level: 'high', label: 'Hinweis' },
+        meta: buildMetaInfo({
+            role: translateRole(document.getElementById('roleSelect').value),
+            action: 'Fehlerhinweis',
+            caseId: state.activeCaseId || '—',
+            note: 'Clientseitige Fehlermeldung'
+        })
+    });
+}
 
-    const summary = document.createElement('summary');
-    summary.className = 'sc-toggle';
-    summary.textContent = 'Verarbeitungsdetails';
-    wrapper.appendChild(summary);
+function appendMessageCard({ type, sender, text, sensitivity, meta, extraNodes = [] }) {
+    const container = document.getElementById('messages');
+    const article = document.createElement('article');
+    article.className = `message-card ${type} sensitivity-${sensitivity.level}`;
+    article.dataset.messageId = `msg-${++state.messageCounter}`;
+
+    const header = document.createElement('div');
+    header.className = 'message-card-header';
+    header.innerHTML = `
+        <div>
+            <div class="message-author">${escHtml(sender)}</div>
+            <div class="message-timestamp">${formatTimestamp(new Date())}</div>
+        </div>
+        <span class="sensitivity-badge sensitivity-${escHtml(sensitivity.level)}">${escHtml(sensitivity.label)}</span>
+    `;
+    article.appendChild(header);
 
     const body = document.createElement('div');
-    body.className = 'sc-body';
+    body.className = 'message-body';
+    body.innerHTML = simpleMarkdown(text);
+    article.appendChild(body);
 
-    // Header line: Rolle | Aktion | Fall
-    const header = document.createElement('div');
-    header.className = 'sc-header';
-    header.innerHTML =
-        `<span class="sc-tag">Rolle: <strong>${escHtml(translateRole(ctx.role))}</strong></span>`
-        + `<span class="sc-tag">Aktion: <strong>${escHtml(translateAction(ctx.action))}</strong></span>`
-        + (ctx.caseId ? `<span class="sc-tag">Fall: <strong>${escHtml(ctx.caseId)}</strong></span>` : '');
-    body.appendChild(header);
-
-    // Retrieved sources with trust indicators
-    if (ctx.retrievedSources && ctx.retrievedSources.length > 0) {
-        const list = document.createElement('div');
-        list.className = 'sc-sources';
-        for (const src of ctx.retrievedSources) {
-            const item = document.createElement('span');
-            item.className = 'sc-source ' + trustClass(src.trustLevel);
-            item.title = src.title || src.docId;
-            item.innerHTML = `${escHtml(src.docId)} `
-                + `<span class="sc-trust">${escHtml(translateTrust(src.trustLevel))}</span>`
-                + `<span class="sc-type">${escHtml(src.sourceType)}</span>`;
-            list.appendChild(item);
-        }
-        body.appendChild(list);
+    for (const node of extraNodes) {
+        article.appendChild(node);
     }
 
-    wrapper.appendChild(body);
+    const footer = document.createElement('div');
+    footer.className = 'message-card-footer';
+
+    const caption = document.createElement('div');
+    caption.className = 'message-caption';
+    caption.textContent = type === 'assistant'
+        ? 'Arbeitsansicht fuer den aktuellen Fall'
+        : 'Nachricht im aktiven Fallkontext';
+    footer.appendChild(caption);
+
+    const metaButton = document.createElement('button');
+    metaButton.type = 'button';
+    metaButton.className = 'meta-toggle';
+    metaButton.textContent = 'Meta-Infos einblenden';
+    footer.appendChild(metaButton);
+    article.appendChild(footer);
+
+    const metaPanel = renderMetaPanel(meta);
+    article.appendChild(metaPanel);
+
+    metaButton.addEventListener('click', () => {
+        const hidden = metaPanel.classList.toggle('hidden');
+        metaButton.textContent = hidden ? 'Meta-Infos einblenden' : 'Meta-Infos ausblenden';
+    });
+
+    container.appendChild(article);
+    scrollToBottom();
+}
+
+function renderMetaPanel(meta) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'message-meta hidden';
+
+    const grid = document.createElement('div');
+    grid.className = 'meta-grid';
+
+    for (const row of meta.rows) {
+        const item = document.createElement('div');
+        item.className = 'meta-row';
+        item.innerHTML = `<strong>${escHtml(row.label)}</strong><span>${escHtml(row.value)}</span>`;
+        grid.appendChild(item);
+    }
+
+    wrapper.appendChild(grid);
+
+    if (meta.sources && meta.sources.length) {
+        const title = document.createElement('div');
+        title.className = 'section-headline';
+        title.style.marginTop = '14px';
+        title.textContent = 'Quellen im Verarbeitungskontext';
+        wrapper.appendChild(title);
+
+        const sourceList = document.createElement('div');
+        sourceList.className = 'source-meta-list';
+
+        for (const source of meta.sources) {
+            const item = document.createElement('div');
+            item.className = 'source-meta-item';
+            item.innerHTML = `
+                <div class="source-meta-header">
+                    <div>
+                        <div class="source-meta-title">${escHtml(source.title || source.docId)}</div>
+                        <div class="source-meta-subtitle">${escHtml(source.docId)} · ${escHtml(source.sourceType || 'Quelle')}</div>
+                    </div>
+                    <div class="case-card-meta">
+                        <span class="classification-pill classification-${escHtml(normalizeClassification(source.classification))}">${escHtml(translateClassification(source.classification))}</span>
+                        <span class="trust-pill trust-${escHtml(source.trustLevel || 'medium')}">${escHtml(translateTrust(source.trustLevel))}</span>
+                    </div>
+                </div>
+            `;
+            sourceList.appendChild(item);
+        }
+
+        wrapper.appendChild(sourceList);
+    }
+
     return wrapper;
 }
 
-function trustClass(level) {
-    switch (level) {
-        case 'high':      return 'trust-high';
-        case 'medium':    return 'trust-medium';
-        case 'low':       return 'trust-low';
-        case 'untrusted': return 'trust-untrusted';
-        default:          return '';
+function buildAssistantMeta(data, sensitivity) {
+    const ctx = data.securityContext || {};
+    const sources = Array.isArray(ctx.retrievedSources) ? ctx.retrievedSources : [];
+
+    return {
+        rows: [
+            { label: 'Rolle', value: translateRole(ctx.role || document.getElementById('roleSelect').value) },
+            { label: 'Modus', value: translateAction(ctx.action || 'chat') },
+            { label: 'Fall', value: ctx.caseId || state.activeCaseId || '—' },
+            { label: 'Sensitivitaet', value: sensitivity.label },
+            { label: 'Quellen', value: sources.length ? `${sources.length} eingebunden` : 'Keine Metadaten hinterlegt' }
+        ],
+        sources
+    };
+}
+
+function buildMetaInfo({ role, action, caseId, note }) {
+    return {
+        rows: [
+            { label: 'Rolle', value: role || '—' },
+            { label: 'Modus', value: action || '—' },
+            { label: 'Fall', value: caseId || '—' },
+            { label: 'Hinweis', value: note || '—' }
+        ],
+        sources: []
+    };
+}
+
+function deriveGreetingSensitivity() {
+    const activeSeverity = getActiveCaseSeverity();
+    return {
+        level: severityToSensitivity(activeSeverity),
+        label: `Fallkontext: ${translateSeverity(activeSeverity)}`
+    };
+}
+
+function deriveResponseSensitivity(data) {
+    const classifications = (data.securityContext?.retrievedSources || []).map(source => normalizeClassification(source.classification));
+
+    if (classifications.includes('confidential')) {
+        return { level: 'high', label: 'Vertraulich' };
+    }
+    if (classifications.includes('internal')) {
+        return { level: 'medium', label: 'Intern' };
+    }
+    if ((data.warnings || []).length) {
+        return { level: 'medium', label: 'Pruefhinweis' };
+    }
+    return { level: 'low', label: 'Oeffentlich' };
+}
+
+function renderToolResult(toolResult) {
+    const node = document.createElement('div');
+    const status = toolResult.status || 'unknown';
+    node.className = `tool-result status-${status}`;
+    node.innerHTML = `
+        <span class="status-chip">${escHtml(translateStatus(status))}</span>
+        <strong>${escHtml(toolResult.action || 'Aktion')}</strong>
+    `;
+    return node;
+}
+
+function renderWarnings(warnings) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'warning-list';
+
+    for (const warning of warnings) {
+        const item = document.createElement('div');
+        item.className = `warning-item ${classifyWarning(warning)}`;
+        item.textContent = warning;
+        wrapper.appendChild(item);
+    }
+
+    return wrapper;
+}
+
+function renderSuggestions(buttons) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'suggestions';
+    buttons.forEach(button => wrapper.appendChild(button));
+    return wrapper;
+}
+
+function showTypingIndicator() {
+    const container = document.getElementById('messages');
+    const article = document.createElement('article');
+    article.className = 'message-card assistant typing sensitivity-neutral';
+    article.innerHTML = `
+        <div class="message-card-header">
+            <div>
+                <div class="message-author">SecAssist</div>
+                <div class="message-timestamp">${formatTimestamp(new Date())}</div>
+            </div>
+            <span class="sensitivity-badge sensitivity-neutral">Bearbeitung</span>
+        </div>
+        <div class="message-body">
+            <div class="typing-indicator"><span></span><span></span><span></span></div>
+        </div>
+    `;
+    container.appendChild(article);
+    scrollToBottom();
+    return article;
+}
+
+function removeTypingIndicator(node) {
+    if (node && node.parentNode) {
+        node.parentNode.removeChild(node);
     }
 }
 
+function scrollToBottom() {
+    const container = document.getElementById('messages');
+    container.scrollTop = container.scrollHeight;
+}
+
+function getActiveCaseSeverity() {
+    return state.availableCases.find(item => item.id === state.activeCaseId)?.severity || 'medium';
+}
+
 function classifyWarning(text) {
-    if (text.startsWith('\u2699')) return 'warn-access';    // ⚙ access decision
-    if (text.startsWith('\uD83D\uDCCA')) return 'warn-source'; // 📊 source summary
-    if (text.startsWith('\u26D4')) return 'warn-denied';    // ⛔ denied
-    if (text.startsWith('\u26A0')) return 'warn-case';      // ⚠ case state / note
-    return 'warn-info';
+    if (!text) return 'warning-info';
+    if (text.includes('Zugriff verweigert') || text.includes('⛔')) return 'warning-danger';
+    if (text.includes('⚠') || text.includes('UNTERDRUECKT') || text.includes('NIEDRIG')) return 'warning-warning';
+    return 'warning-info';
 }
 
 function translateStatus(status) {
-    const map = { executed: 'Ausgef\u00fchrt', rejected: 'Abgelehnt',
-                  pending: 'Ausstehend' };
-    return map[status] || status;
+    return {
+        executed: 'Ausgefuehrt',
+        rejected: 'Abgelehnt',
+        pending: 'Ausstehend'
+    }[status] || status;
 }
 
 function translateRole(role) {
-    const map = { employee: 'Mitarbeiter', security_analyst: 'Security-Analyst',
-                  contractor: 'Externer', system: 'System' };
-    return map[role] || role;
+    return {
+        employee: 'Mitarbeiter',
+        security_analyst: 'Security-Analyst',
+        contractor: 'Externer',
+        system: 'System'
+    }[role] || role;
 }
 
 function translateAction(action) {
-    const map = { chat: 'Chat', triage: 'Triage', handover: '\u00dcbergabe',
-                  similar_cases: '\u00c4hnliche F\u00e4lle', evidence: 'Beweise',
-                  workflow: 'Workflow', add_note: 'Notiz hinzuf\u00fcgen' };
-    return map[action] || action;
+    return {
+        chat: 'Chat',
+        triage: 'Triage',
+        handover: 'Uebergabe',
+        similar_cases: 'Aehnliche Faelle',
+        evidence: 'Quellenansicht',
+        workflow: 'Workflow',
+        add_note: 'Notiz'
+    }[action] || action;
+}
+
+function translateSeverity(severity) {
+    return {
+        low: 'Niedrig',
+        medium: 'Mittel',
+        high: 'Hoch',
+        critical: 'Kritisch'
+    }[severity] || severity;
+}
+
+function translateCaseType(type) {
+    return {
+        phishing: 'Phishing',
+        malware: 'Malware',
+        account_compromise: 'Account-Risiko',
+        supply_chain: 'Supply Chain',
+        insider_threat: 'Insider-Risiko',
+        restricted_match: 'Eingeschraenkte Treffer'
+    }[type] || type;
 }
 
 function translateTrust(level) {
-    const map = { high: 'Vertrauensw\u00fcrdig', medium: 'Mittel',
-                  low: 'Niedrig', untrusted: 'Nicht vertrauensw\u00fcrdig' };
-    return map[level] || level;
+    return {
+        high: 'Vertrauenswuerdig',
+        medium: 'Mittel',
+        low: 'Niedrig',
+        untrusted: 'Untrusted'
+    }[level] || (level || 'Unbekannt');
+}
+
+function translateClassification(level) {
+    return {
+        public: 'Oeffentlich',
+        internal: 'Intern',
+        confidential: 'Vertraulich'
+    }[normalizeClassification(level)] || (level || 'Unbekannt');
+}
+
+function normalizeClassification(level) {
+    return ['public', 'internal', 'confidential'].includes(level) ? level : 'public';
+}
+
+function severityToSensitivity(severity) {
+    return {
+        low: 'low',
+        medium: 'medium',
+        high: 'high',
+        critical: 'high'
+    }[severity] || 'neutral';
+}
+
+function formatArtifactType(type) {
+    return {
+        email: 'E-Mail',
+        note: 'Notiz',
+        policy_excerpt: 'Richtlinie',
+        attachment_hint: 'Anhang-Hinweis'
+    }[type] || type;
+}
+
+function formatTimestamp(date) {
+    return new Intl.DateTimeFormat('de-DE', {
+        hour: '2-digit',
+        minute: '2-digit'
+    }).format(date);
 }
 
 function escHtml(text) {
-    if (!text) return '';
-    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    if (text === null || text === undefined) {
+        return '';
+    }
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 }
 
-function showTyping() {
-    const container = document.getElementById('messages');
-    const div = document.createElement('div');
-    div.className = 'typing-indicator';
-    div.innerHTML = '<span></span><span></span><span></span>';
-    container.appendChild(div);
-    scrollToBottom();
-    return div;
-}
-
-function removeTyping(el) {
-    if (el && el.parentNode) el.parentNode.removeChild(el);
-}
-
-function scrollToBottom() {
-    const msgs = document.getElementById('messages');
-    msgs.scrollTop = msgs.scrollHeight;
-}
-
-function detectCaseFromResponse(data) {
-    return data?.securityContext?.caseId || activeCaseId;
-}
-
-/** Minimal Markdown to HTML */
 function simpleMarkdown(text) {
-    if (!text) return '';
-    return text
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    if (!text) {
+        return '';
+    }
+
+    return escHtml(text)
         .replace(/^## (.+)$/gm, '<h4>$1</h4>')
         .replace(/^### (.+)$/gm, '<h5>$1</h5>')
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')

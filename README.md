@@ -21,8 +21,9 @@ Sicherheitskritische Entscheidungen liegen in der `PolicyEngine`, im `RetrievalS
 Die aktuelle App-Version bietet:
 
 - Rollenwahl im Browser (`employee`, `security_analyst`, `contractor`)
-- Auswahl eines Demo-Falls **vor** dem Chat
+- separate Falluebersicht als Einstieg, ueber die Benutzer ihre zugewiesenen Demo-Faelle sehen und zur Bearbeitung auswaehlen
 - ein gefuehrtes Chat-UI mit Fallbriefing, Artefakten und Aktionschips
+- modernisierte, zweistufige UI mit Inbox-/Fallansicht und anschliessender Chatbearbeitung
 - automatische Intent-Erkennung ueber `/api/conversation`
 - strukturierte Requests ueber `/api/chat`
 - folgende Aktionen im Anwendungscode:
@@ -32,7 +33,7 @@ Die aktuelle App-Version bietet:
   - Evidence / Quellenansicht
   - Triage mit moeglicher Workflow-Aktion
   - Notizen, die in den Retrieval-Kontext einfliessen
-- sichtbare Warnungen und aufklappbare **Verarbeitungsdetails** im UI
+- sichtbare Warnungen, Sensitivitaetskennzeichnung pro Nachricht und optional einblendbare **Meta-Informationen** je Nachricht
 - kurze, deterministische Fallbriefings zur besseren Exploration und stabileren Antworten
 
 Wichtig: Die neuen Aktionschips im UI sind als **plausible Arbeitsmodi** gedacht. Sie ersetzen nicht die Anwendungslogik, sondern erleichtern die Exploration. Sicherheitskritische Entscheidungen bleiben weiterhin im deterministischen Backend.
