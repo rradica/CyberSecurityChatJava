@@ -107,8 +107,8 @@ Die Anwendung soll bewusst **einfach und browserfreundlich** sein.
 - Maven
 - Maven Wrapper
 - Spring Web
-- Thymeleaf oder einfache serverseitige HTML-Views
-- alternativ sehr einfache statische Frontend-Dateien unter `src/main/resources/static`
+- sehr einfache statische Frontend-Dateien unter `src/main/resources/static`
+- REST-Endpunkte fuer das Frontend unter `@RestController`
 - JUnit 5
 - moeglichst wenige zusaetzliche Bibliotheken
 
@@ -137,9 +137,13 @@ Verwende Spring AI nur dort, wo es wirklich hilft.
 
 ### Bevorzugt
 - `ChatClient`
-- `ToolCallback`
 - einfache, klar lesbare Prompt-Erzeugung
 - optional Advisors nur dann, wenn sie die Architektur klarer machen
+
+### Aktueller Ist-Stand
+- Das Repository nutzt aktuell primaer `ChatClient` ueber `OpenAiChatService`
+- Tool- und Workflow-Entscheidungen liegen im Anwendungscode, nicht in Spring-AI-Tool-Callbacks
+- Die App verwendet derzeit keinen verdrahteten Mock-LLM-Pfad
 
 ### Nicht erwuenscht
 - komplexe Advisor-Ketten ohne Mehrwert
@@ -170,6 +174,8 @@ Die App soll einen kleinen Security-Chatbot bereitstellen, mit dem Benutzer:
 - einen **handover draft for security** erzeugen
 - **similar cases** anfordern
 - **evidence / sources** anzeigen
+- interne Fallnotizen erfassen
+- eingehende externe Rueckmeldungen in einen Fall uebernehmen
 - einen sicherheitsrelevanten Workflow-Schritt vorbereiten oder ausloesen koennen
 
 Es handelt sich um eine **Workshop-App**, nicht um ein Produktivsystem.
@@ -440,10 +446,12 @@ Bevorzugte Struktur:
 - `RetrievalService`
 - `PromptBuilder`
 - `ToolPolicyService`
-- `MockLlmService`
 - `OpenAiChatService`
 - `DemoCaseService`
 - `IncidentWorkflowService`
+- `ChatOrchestrator`
+- `ConversationService`
+- `ApiController`
 
 ---
 
@@ -476,11 +484,16 @@ Die UI soll fuer den Workshop hilfreich sein, nicht beeindrucken.
 Die App darf klassisch mit Spring MVC gebaut sein.
 
 Bevorzugt:
-- `@Controller` fuer HTML-Seiten
 - `@RestController` fuer JSON-Endpunkte
 - kleine Request-/Response-DTOs
 - klare Validierung
 - einfache Exception-Behandlung
+- statisches Frontend unter `src/main/resources/static`
+
+Aktueller Ist-Stand:
+- die Anwendung nutzt derzeit ein statisches Browser-Frontend
+- die UI spricht primaer JSON-Endpunkte wie `/api/chat` und `/api/conversation` an
+- zusaetzlich existieren Endpunkte fuer Fallbriefings, Notizen, externe Rueckmeldungen und Healthchecks
 
 Nicht erwuenscht:
 - komplexe SPA-Architektur
@@ -500,8 +513,9 @@ Bevorzugt:
 - sinnvolle Defaults
 
 Wichtig:
-- App muss auch ohne echten LLM-Key startbar sein
-- Mock-Modus muss vollstaendig funktionieren
+- die Anwendung startet mit Default-Konfiguration aus `application.yml`
+- fuer echte LLM-gestuetzte Requests ist aktuell ein gueltiger `OPENAI_API_KEY` noetig
+- ein Mock-Modus ist im aktuellen Stand **nicht** verdrahtet und sollte nicht als bereits vorhanden beschrieben werden
 
 ---
 
@@ -553,6 +567,11 @@ Wenn du Aenderungen vornimmst:
 6. Ergaenze oder passe Tests an
 7. Aktualisiere README, wenn Verhalten sich aendert
 
+Wenn sich Workshop-Material aendert, aktualisiere bei Bedarf auch:
+- `exploits/README.md`
+- `exploits/BLUE_TEAM_LEITFADEN.md`
+- `exploits/RED_TEAM_LEITFADEN.md`
+
 ### Bevorzugte Reihenfolge bei groeßeren Aenderungen
 1. Model / DTOs
 2. Policy
@@ -591,6 +610,9 @@ Wenn neue Dateien oder Features ergaenzt werden, muss das README die folgenden D
 - Demo-Faelle
 - Schwachstellen-Uebersicht
 - Workshop-Hinweise
+
+Wenn sich die Workshop-Unterlagen veraendern, sollten ausserdem die Exploit-Leitfaeden
+und Team-Dokumente unter `exploits/` konsistent zum aktuellen App-Stand bleiben.
 
 ---
 
