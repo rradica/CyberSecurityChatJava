@@ -2,6 +2,7 @@ package com.secassist.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
@@ -135,7 +136,8 @@ public class ChatOrchestrator {
 
         addToHistory(session, message, reply);
 
-        List<String> warnings = buildCaseStateWarnings(caseState);
+        List<String> warnings = new ArrayList<>(buildCaseStateWarnings(caseState));
+        warnings.addAll(buildTrustMergeWarnings(context));
         SecurityContext ctx = buildSecurityContext(role, "chat", caseId, context);
         return new ChatResponse(reply, sources, null, warnings, ctx);
     }
@@ -158,8 +160,11 @@ public class ChatOrchestrator {
 
         ToolActionResult toolResult = workflowService.executeAction(caseId, "create_handover_draft", role);
 
+        List<String> warnings = new ArrayList<>(buildCaseStateWarnings(caseState));
+        warnings.addAll(buildClassificationViolationWarnings(role, context));
+        warnings.addAll(buildTrustMergeWarnings(context));
         SecurityContext ctx = buildSecurityContext(role, "handover", caseId, context);
-        return new ChatResponse(reply, sources, toolResult, buildCaseStateWarnings(caseState), ctx);
+        return new ChatResponse(reply, sources, toolResult, warnings, ctx);
     }
 
     private ChatResponse handleSimilarCases(Role role, String caseId, String message) {
@@ -181,8 +186,10 @@ public class ChatOrchestrator {
 
         // Incident-Effekt: Fallzustand auch im Similar-Cases-Pfad sichtbar
         CaseState caseState = workflowService.getCaseState(caseId);
+        List<String> warnings = new ArrayList<>(buildCaseStateWarnings(caseState));
+        warnings.addAll(buildOracleLeakWarnings(role, similar));
         SecurityContext ctx = SecurityContext.of(role.name().toLowerCase(), "similar_cases", caseId);
-        return new ChatResponse(sb.toString(), List.of(), null, buildCaseStateWarnings(caseState), ctx);
+        return new ChatResponse(sb.toString(), List.of(), null, warnings, ctx);
     }
 
     private ChatResponse handleEvidence(Role role, String caseId) {
@@ -255,8 +262,9 @@ public class ChatOrchestrator {
                 + "Fasse die Auswirkungen dieser Aktion auf den Fall zusammen.");
 
         List<String> warnings = new ArrayList<>(buildCaseStateWarnings(caseState));
-        warnings.addAll(buildAccessDecisionWarnings(role, actionName, decision));
+        warnings.addAll(buildAccessDecisionWarnings(role, actionName, decision, context));
         warnings.addAll(buildElevatedNoteWarnings(context));
+        warnings.addAll(buildTrustMergeWarnings(context));
 
         SecurityContext ctx = buildSecurityContext(role, "workflow", caseId, context);
         return new ChatResponse(reply, sources, result, warnings, ctx);
@@ -300,8 +308,9 @@ public class ChatOrchestrator {
                 // Incident-Effekt: aktualisierter Zustand nach Aktion
                 CaseState updatedState = workflowService.getCaseState(caseId);
                 List<String> warnings = new ArrayList<>(buildCaseStateWarnings(updatedState));
-                warnings.addAll(buildAccessDecisionWarnings(role, suggestedAction, decision));
+                warnings.addAll(buildAccessDecisionWarnings(role, suggestedAction, decision, context));
                 warnings.addAll(buildElevatedNoteWarnings(context));
+                warnings.addAll(buildTrustMergeWarnings(context));
                 return new ChatResponse(reply, sources, result, warnings, ctx);
             }
 
@@ -448,11 +457,97 @@ public class ChatOrchestrator {
         session.setAttribute(SESSION_LAST_CASE_ID, caseId);
     }
 
+    // --- Violation Detection (Workshop-Sichtbarkeit) ---
+
+    /**
+     * Erkennt Klassifizierungsverletzungen: Chunks mit zu hoher Klassifizierung
+     * fuer die aktuelle Rolle (Bug 1 - Handover Scope Leak).
+     */
+    private List<String> buildClassificationViolationWarnings(Role role, List<DocumentChunk> context) {
+        if (context == null || context.isEmpty() || role == Role.SECURITY_ANALYST) {
+            return List.of();
+        }
+        Set<String> allowed = policyEngine.allowedClassifications(role);
+        List<DocumentChunk> violations = context.stream()
+                .filter(c -> !allowed.contains(c.classification()))
+                .toList();
+        if (violations.isEmpty()) {
+            return List.of();
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("\uD83D\uDD34 KLASSIFIZIERUNGSVERLETZUNG: ")
+          .append(violations.size())
+          .append(" Quelle(n) mit zu hoher Klassifizierung an ")
+          .append(role == Role.EMPLOYEE ? "Mitarbeiter" : "Externer")
+          .append("-Rolle ausgeliefert.");
+        for (DocumentChunk v : violations) {
+            sb.append(" [").append(v.id())
+              .append(" (Klassifizierung: ").append(v.classification())
+              .append(", Zielgruppe: ").append(v.audience()).append(")]");
+        }
+        sb.append(" Erlaubt fuer diese Rolle: ").append(String.join(", ", allowed)).append(".");
+        return List.of(sb.toString());
+    }
+
+    /**
+     * Erkennt Metadaten-Leaks durch die Aehnliche-Faelle-Suche
+     * (Bug 2 - Existence Oracle).
+     */
+    private List<String> buildOracleLeakWarnings(Role role, List<DemoCase> similarCases) {
+        if (role == Role.SECURITY_ANALYST) {
+            return List.of();
+        }
+        boolean hasSignal = similarCases.stream()
+                .anyMatch(c -> "internal_similarity_signal".equals(c.id()));
+        if (!hasSignal) {
+            return List.of();
+        }
+        return List.of("\uD83D\uDFE0 METADATEN-LEAK: Die Aehnliche-Faelle-Suche hat interne "
+                + "Vorfaelle bestaetigt, die fuer Ihre Rolle nicht sichtbar sein sollten. "
+                + "Allein die Existenzbestaetigung ist eine Informationspreisgabe.");
+    }
+
+    /**
+     * Erkennt Trust-Boundary-Verletzungen: Trusted und untrusted Quellen
+     * im selben Kontext (Bug 4 - Trust Merge).
+     */
+    private List<String> buildTrustMergeWarnings(List<DocumentChunk> context) {
+        if (context == null || context.size() < 2) {
+            return List.of();
+        }
+        long trusted = context.stream()
+                .filter(c -> "high".equals(c.trustLevel())
+                        && ("policy".equals(c.sourceType()) || "runbook".equals(c.sourceType())
+                            || "postmortem".equals(c.sourceType()) || "helpdesk_guide".equals(c.sourceType())))
+                .count();
+        long untrusted = context.stream()
+                .filter(c -> "untrusted".equals(c.trustLevel()))
+                .count();
+        if (trusted == 0 || untrusted == 0) {
+            return List.of();
+        }
+        return List.of("\uD83D\uDFE0 TRUST-GRENZE AUFGEHOBEN: "
+                + untrusted + " nicht verifizierte Quelle(n) (trustLevel=untrusted) "
+                + "mit " + trusted + " vertrauenswuerdigen internen Quelle(n) "
+                + "als einheitliche Bewertung zusammengefuehrt. "
+                + "Das LLM kann den Unterschied nicht erkennen.");
+    }
+
     /**
      * Erzeugt Warnungen fuer die Zugriffsentscheidung bei evidenzbasierter Freigabe.
      */
     private List<String> buildAccessDecisionWarnings(Role role, String action,
                                                      ToolPolicyDecision decision) {
+        return buildAccessDecisionWarnings(role, action, decision, List.of());
+    }
+
+    /**
+     * Erzeugt Warnungen fuer die Zugriffsentscheidung bei evidenzbasierter Freigabe
+     * mit optionaler Quellenauflistung.
+     */
+    private List<String> buildAccessDecisionWarnings(Role role, String action,
+                                                     ToolPolicyDecision decision,
+                                                     List<DocumentChunk> context) {
         if (!"evidence_override".equals(decision.reason())) {
             return List.of();
         }
@@ -461,11 +556,26 @@ public class ChatOrchestrator {
             case CONTRACTOR -> "Externer";
             case SECURITY_ANALYST -> "Security-Analyst";
         };
-        return List.of("\u2699 Zugriffsentscheidung: Aktion '" + action
-                + "' f\u00fcr Rolle '" + roleName
-                + "' durch Evidenz-Score freigegeben (Score: "
-                + decision.evidenceScore() + ", Schwellwert: "
-                + decision.evidenceThreshold() + ")");
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("\uD83D\uDD34 RECHTE-ESKALATION: Analysten-Aktion '")
+          .append(action).append("' fuer ").append(roleName)
+          .append("-Rolle ueber Evidenz-Score freigegeben (Score: ")
+          .append(decision.evidenceScore()).append(", Schwellwert: ")
+          .append(decision.evidenceThreshold())
+          .append("). Keine Pruefung, ob die Evidenz aus vertrauenswuerdigen Quellen stammt.");
+
+        if (!context.isEmpty()) {
+            sb.append(" Beteiligte Quellen:");
+            for (DocumentChunk c : context) {
+                if ("policy".equals(c.sourceType()) || "runbook".equals(c.sourceType())
+                        || "case_note".equals(c.sourceType()) || "supplier_note".equals(c.sourceType())) {
+                    sb.append(" [").append(c.title())
+                      .append(" (trust=").append(c.trustLevel()).append(")]");
+                }
+            }
+        }
+        return List.of(sb.toString());
     }
 
     /**

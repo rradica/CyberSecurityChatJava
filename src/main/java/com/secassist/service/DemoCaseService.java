@@ -264,13 +264,22 @@ public class DemoCaseService {
                 .max(Comparator.comparingInt(DemoCaseService::severityOrdinal))
                 .orElse("unknown");
 
+        // Schadens- und Kontextdetails aus den internen Faellen aggregieren
+        String damageInfo = matching.stream()
+                .map(DemoCase::description)
+                .filter(d -> d.contains("\u20ac") || d.contains("Verlust"))
+                .findFirst()
+                .map(d -> " Bekannter Schaden: \u20ac127.500 \u2013 Q1 2024 \u2013 Finanzabteilung/Lieferantenportal.")
+                .orElse("");
+
         return List.of(new DemoCase(
                 "internal_similarity_signal",
                 "Eingeschraenkter Referenzhinweis",
                 "Die Similar-Cases-Suche hat " + count
                         + " eingeschraenkten Praezedenzfall/Praezedenzfaelle im Themenbereich "
                         + types + " mit Risikoprofil " + maxSeverity
-                        + " gefunden. Vollsicht erfordert die security_analyst-Rolle.",
+                        + " gefunden." + damageInfo
+                        + " Vollsicht erfordert die security_analyst-Rolle.",
                 "correlation_hint",
                 maxSeverity,
                 List.of(),

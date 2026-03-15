@@ -791,6 +791,69 @@ textarea {
     border-color: rgba(220, 38, 38, 0.12);
 }
 
+.warning-violation {
+    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+    color: #7f1d1d;
+    border-color: rgba(220, 38, 38, 0.35);
+    font-weight: 600;
+    padding: 14px 16px;
+    border-left: 5px solid #dc2626;
+}
+
+.warning-anomaly {
+    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+    color: #78350f;
+    border-color: rgba(217, 119, 6, 0.3);
+    font-weight: 600;
+    padding: 14px 16px;
+    border-left: 5px solid #d97706;
+}
+
+.case-state-banner {
+    margin: 0;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+    color: #7f1d1d;
+    border-bottom: 1px solid rgba(220, 38, 38, 0.2);
+    font-size: 0.84rem;
+    line-height: 1.5;
+}
+
+.case-state-banner.hidden {
+    display: none;
+}
+
+.case-state-banner strong {
+    display: block;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #dc2626;
+    margin-bottom: 6px;
+}
+
+.case-state-effects {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.case-state-effects span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(220, 38, 38, 0.1);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.case-state-effects span::before {
+    content: '\2717';
+    color: #dc2626;
+}
+
 .input-area {
     padding: 18px 24px 22px;
     border-top: 1px solid var(--border);

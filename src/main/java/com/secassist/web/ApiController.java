@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.secassist.model.CaseBriefing;
+import com.secassist.model.CaseState;
 import com.secassist.model.ChatRequest;
 import com.secassist.model.ChatResponse;
 import com.secassist.model.ConversationRequest;
@@ -26,6 +27,7 @@ import com.secassist.retrieval.RetrievalService;
 import com.secassist.service.ChatOrchestrator;
 import com.secassist.service.ConversationService;
 import com.secassist.service.DemoCaseService;
+import com.secassist.tools.IncidentWorkflowService;
 
 /**
  * REST-Controller fuer alle vom Frontend genutzten SecAssist-Endpunkte.
@@ -50,15 +52,18 @@ public class ApiController {
     private final ConversationService conversationService;
     private final DemoCaseService demoCaseService;
     private final RetrievalService retrievalService;
+    private final IncidentWorkflowService workflowService;
 
     public ApiController(ChatOrchestrator orchestrator,
                          ConversationService conversationService,
                          DemoCaseService demoCaseService,
-                         RetrievalService retrievalService) {
+                         RetrievalService retrievalService,
+                         IncidentWorkflowService workflowService) {
         this.orchestrator = orchestrator;
         this.conversationService = conversationService;
         this.demoCaseService = demoCaseService;
         this.retrievalService = retrievalService;
+        this.workflowService = workflowService;
     }
 
     /**
@@ -146,6 +151,12 @@ public class ApiController {
     public Map<String, String> clearNotes() {
         retrievalService.clearUserNotes();
         return Map.of("status", "cleared");
+    }
+
+    /** Gibt den aktuellen Fallzustand (Incident-Effekte) zurueck. */
+    @GetMapping("/cases/{caseId}/state")
+    public CaseState getCaseState(@PathVariable String caseId) {
+        return workflowService.getCaseState(caseId);
     }
 
     /** Healthcheck-Endpunkt. */

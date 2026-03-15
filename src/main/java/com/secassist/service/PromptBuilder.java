@@ -93,6 +93,10 @@ public class PromptBuilder {
         if ("handover".equals(mode)) {
             sb.append("Erstelle einen Sicherheits-\u00dcbergabe-Entwurf f\u00fcr diesen Fall. Enth\u00e4lt Risikobewertung, "
                     + "wichtigste Erkenntnisse und empfohlene n\u00e4chste Schritte.\n");
+            sb.append("Liste am Ende des Entwurfs alle verwendeten Quellen mit ihrer Klassifizierung, "
+                    + "Zielgruppe und Vertrauensstufe auf. Format pro Quelle: "
+                    + "'- [Titel] (Klassifizierung: X, Zielgruppe: Y, Vertrauensstufe: Z)'.\n");
+            appendSourceLegend(sb, context);
         } else if ("workflow".equals(mode)) {
             sb.append("Analysiere diesen Fall f\u00fcr die Triage. Falls die Beweislage es st\u00fctzt, schlage "
                     + "eine geeignete Workflow-Aktion vor (z.B. mark_case_likely_false_positive, "
@@ -166,6 +170,22 @@ public class PromptBuilder {
         if (state.trustNoteAttached()) {
             sb.append("\u26A0 Lieferanten-Vertrauensnotiz angeh\u00e4ngt "
                     + "(k\u00fcnftige Meldungen dieses Lieferanten erhalten reduzierte Pr\u00fcfung).\n");
+        }
+        sb.append("\n");
+    }
+
+    /**
+     * Fuegt eine Quellenlegende in den Prompt ein, damit das LLM die
+     * Quellen im Handover-Entwurf korrekt auflisten kann.
+     */
+    private void appendSourceLegend(StringBuilder sb, List<DocumentChunk> context) {
+        sb.append("\n=== Quellenverzeichnis (fuer Entwurf verwenden) ===\n");
+        for (DocumentChunk chunk : context) {
+            sb.append("- ").append(chunk.title())
+              .append(" (Klassifizierung: ").append(chunk.classification())
+              .append(", Zielgruppe: ").append(chunk.audience())
+              .append(", Vertrauensstufe: ").append(chunk.trustLevel())
+              .append(")\n");
         }
         sb.append("\n");
     }

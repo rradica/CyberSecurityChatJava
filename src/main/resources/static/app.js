@@ -519,15 +519,18 @@ async function runCaseAction(action) {
 
 function appendAssistantResponse(data) {
     const sensitivity = deriveResponseSensitivity(data);
+    const preNodes = [];
     const extraNodes = [];
+
+    if (data.warnings && data.warnings.length) {
+        preNodes.push(renderWarnings(data.warnings));
+    }
 
     if (data.toolResult) {
         extraNodes.push(renderToolResult(data.toolResult));
     }
 
-    if (data.warnings && data.warnings.length) {
-        extraNodes.push(renderWarnings(data.warnings));
-    }
+    const autoExpand = hasViolationWarning(data.warnings);
 
     appendMessageCard({
         type: 'assistant',
@@ -535,8 +538,14 @@ function appendAssistantResponse(data) {
         text: data.reply || 'Es konnte keine Antwort erzeugt werden.',
         sensitivity,
         meta: buildAssistantMeta(data, sensitivity),
-        extraNodes
+        preNodes,
+        extraNodes,
+        autoExpandMeta: autoExpand
     });
+
+    if (state.activeCaseId) {
+        refreshCaseStateBanner();
+    }
 }
 
 function appendError(text) {
@@ -554,7 +563,7 @@ function appendError(text) {
     });
 }
 
-function appendMessageCard({ type, sender, text, sensitivity, meta, extraNodes = [] }) {
+function appendMessageCard({ type, sender, text, sensitivity, meta, preNodes = [], extraNodes = [], autoExpandMeta = false }) {
     const container = document.getElementById('messages');
     const article = document.createElement('article');
     article.className = `message-card ${type} sensitivity-${sensitivity.level}`;
@@ -570,6 +579,10 @@ function appendMessageCard({ type, sender, text, sensitivity, meta, extraNodes =
         <span class="sensitivity-badge sensitivity-${escHtml(sensitivity.level)}">${escHtml(sensitivity.label)}</span>
     `;
     article.appendChild(header);
+
+    for (const node of preNodes) {
+        article.appendChild(node);
+    }
 
     const body = document.createElement('div');
     body.className = 'message-body';
@@ -598,6 +611,12 @@ function appendMessageCard({ type, sender, text, sensitivity, meta, extraNodes =
     article.appendChild(footer);
 
     const metaPanel = renderMetaPanel(meta);
+    if (!autoExpandMeta) {
+        metaPanel.classList.add('hidden');
+    } else {
+        metaPanel.classList.remove('hidden');
+        metaButton.textContent = 'Meta-Infos ausblenden';
+    }
     article.appendChild(metaPanel);
 
     metaButton.addEventListener('click', () => {
@@ -670,7 +689,7 @@ function clearActiveBuffer() {
 
 function renderMetaPanel(meta) {
     const wrapper = document.createElement('div');
-    wrapper.className = 'message-meta hidden';
+    wrapper.className = 'message-meta';
 
     const grid = document.createElement('div');
     grid.className = 'meta-grid';
@@ -839,9 +858,16 @@ function getActiveCaseSeverity() {
 
 function classifyWarning(text) {
     if (!text) return 'warning-info';
-    if (text.includes('Zugriff verweigert') || text.includes('⛔')) return 'warning-danger';
-    if (text.includes('⚠') || text.includes('UNTERDRUECKT') || text.includes('NIEDRIG')) return 'warning-warning';
+    if (text.includes('\uD83D\uDD34') || text.includes('KLASSIFIZIERUNGSVERLETZUNG') || text.includes('RECHTE-ESKALATION')) return 'warning-violation';
+    if (text.includes('\uD83D\uDFE0') || text.includes('METADATEN-LEAK') || text.includes('TRUST-GRENZE')) return 'warning-anomaly';
+    if (text.includes('Zugriff verweigert') || text.includes('\u26D4')) return 'warning-danger';
+    if (text.includes('\u26A0') || text.includes('UNTERDRUECKT') || text.includes('NIEDRIG')) return 'warning-warning';
     return 'warning-info';
+}
+
+function hasViolationWarning(warnings) {
+    if (!warnings || !warnings.length) return false;
+    return warnings.some(w => classifyWarning(w) === 'warning-violation');
 }
 
 function translateStatus(status) {
@@ -937,6 +963,29 @@ function formatTimestamp(date) {
         hour: '2-digit',
         minute: '2-digit'
     }).format(date);
+}
+
+async function refreshCaseStateBanner() {
+    const banner = document.getElementById('caseStateBanner');
+    if (!banner || !state.activeCaseId) {
+        if (banner) banner.classList.add('hidden');
+        return;
+    }
+    try {
+        const response = await fetch(`${API}/cases/${state.activeCaseId}/state`);
+        if (!response.ok) { banner.classList.add('hidden'); return; }
+        const caseState = await response.json();
+        const effects = [];
+        if (caseState.escalationSuppressed) effects.push('Eskalation UNTERDRUECKT');
+        if (caseState.priorityLow) effects.push('Prioritaet auf NIEDRIG gesetzt');
+        if (caseState.routedToFinance) effects.push('An Finanzabteilung weitergeleitet (Security entfernt)');
+        if (caseState.trustNoteAttached) effects.push('Lieferanten-Vertrauensnotiz angehaengt');
+        if (!effects.length) { banner.classList.add('hidden'); return; }
+        banner.innerHTML = `<strong>FALLZUSTAND VERAENDERT</strong><div class="case-state-effects">${effects.map(e => `<span>${escHtml(e)}</span>`).join('')}</div>`;
+        banner.classList.remove('hidden');
+    } catch (_) {
+        banner.classList.add('hidden');
+    }
 }
 
 function escHtml(text) {
