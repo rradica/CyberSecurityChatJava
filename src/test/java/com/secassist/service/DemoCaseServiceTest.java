@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
+import com.secassist.model.CaseBriefing;
 import com.secassist.model.DemoCase;
 import com.secassist.model.Role;
 
@@ -56,5 +57,16 @@ class DemoCaseServiceTest {
                 .toList();
         assertThat(internal).hasSize(2);
         assertThat(internal).anyMatch(c -> c.id().equals("acme_supply_chain_compromise"));
+    }
+
+    @Test
+    void caseBriefingProvidesArtifactsAndFacts() {
+        CaseBriefing briefing = service.getCaseBriefing("strange_attachment");
+
+        assertThat(briefing).isNotNull();
+        assertThat(briefing.caseId()).isEqualTo("strange_attachment");
+        assertThat(briefing.initialFacts()).isNotEmpty();
+        assertThat(briefing.artifacts()).isNotEmpty();
+        assertThat(briefing.recommendedQuestions()).isNotEmpty();
     }
 }

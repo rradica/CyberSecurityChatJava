@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.secassist.llm.LlmService;
+import com.secassist.model.CaseBriefing;
 import com.secassist.model.CaseState;
 import com.secassist.model.ChatRequest;
 import com.secassist.model.ChatResponse;
@@ -90,14 +91,15 @@ public class ChatOrchestrator {
 
         // Fallinfo laden
         DemoCase demoCase = demoCaseService.findById(caseId);
-        String caseDesc = demoCase != null ? demoCase.description() : "Unbekannter Fall: " + caseId;
+        CaseBriefing briefing = demoCaseService.getCaseBriefing(caseId);
+        String caseDesc = describeCase(demoCase, briefing, caseId);
 
         return switch (action) {
-            case "chat"          -> handleChat(role, caseId, caseDesc, message, session);
-            case "handover"      -> handleHandover(role, caseId, caseDesc, message, session);
+            case "chat"          -> handleChat(role, caseId, caseDesc, briefing, message, session);
+            case "handover"      -> handleHandover(role, caseId, caseDesc, briefing, message, session);
             case "similar_cases" -> handleSimilarCases(role, caseId, message);
             case "evidence"      -> handleEvidence(role, caseId);
-            case "workflow"      -> handleWorkflow(role, caseId, caseDesc, message, session);
+            case "workflow"      -> handleWorkflow(role, caseId, caseDesc, briefing, message, session);
             default              -> ChatResponse.text("Unbekannte Aktion: " + action);
         };
     }
@@ -105,6 +107,7 @@ public class ChatOrchestrator {
     // --- Action Handlers ---
 
     private ChatResponse handleChat(Role role, String caseId, String caseDesc,
+                                    CaseBriefing briefing,
                                     String message, HttpSession session) {
         // Schritt 3+4: Kontext aufbauen
         List<DocumentChunk> context = retrievalService.retrieve(role, caseId, "chat", message);
@@ -112,7 +115,7 @@ public class ChatOrchestrator {
 
         // Schritt 5: Text generieren (inkl. Fallzustand fuer Incident-Effekte)
         CaseState caseState = workflowService.getCaseState(caseId);
-        String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, context, "chat", caseState);
+        String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, briefing, context, "chat", caseState);
         String reply = llmService.chat(systemPrompt, message);
         List<String> sources = promptBuilder.extractSourceIds(context);
 
@@ -124,6 +127,7 @@ public class ChatOrchestrator {
     }
 
     private ChatResponse handleHandover(Role role, String caseId, String caseDesc,
+                                        CaseBriefing briefing,
                                         String message, HttpSession session) {
         if (!policyEngine.canUseTool(role, "create_handover_draft")) {
             return ChatResponse.text("Zugriff verweigert: Ihre Rolle (" + role
@@ -134,7 +138,7 @@ public class ChatOrchestrator {
         storeContextInSession(session, caseId, context);
 
         CaseState caseState = workflowService.getCaseState(caseId);
-        String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, context, "handover", caseState);
+        String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, briefing, context, "handover", caseState);
         String reply = llmService.chat(systemPrompt, "Erstelle einen Sicherheits-\u00dcbergabe-Entwurf f\u00fcr diesen Fall.");
         List<String> sources = promptBuilder.extractSourceIds(context);
 
@@ -152,7 +156,7 @@ public class ChatOrchestrator {
 
         List<DemoCase> similar = demoCaseService.findSimilarCases(caseId, role, message);
 
-        StringBuilder sb = new StringBuilder("## \u00c4hnliche F\u00e4lle\n\n");
+        StringBuilder sb = new StringBuilder("## Aehnliche Faelle\n\n");
         for (DemoCase c : similar) {
             sb.append("- **").append(c.title()).append("** (").append(c.id()).append(")\n");
             sb.append("  Typ: ").append(c.type())
@@ -188,6 +192,7 @@ public class ChatOrchestrator {
     }
 
     private ChatResponse handleWorkflow(Role role, String caseId, String caseDesc,
+                                        CaseBriefing briefing,
                                         String actionName, HttpSession session) {
         if (actionName == null || actionName.isBlank()) {
             return ChatResponse.text("Bitte geben Sie eine Workflow-Aktion an oder fordern Sie eine Triage-Bewertung an.");
@@ -198,7 +203,7 @@ public class ChatOrchestrator {
             List<DocumentChunk> context = resolveContext(role, caseId, "workflow", actionName, session);
             storeContextInSession(session, caseId, context);
             List<String> sources = promptBuilder.extractSourceIds(context);
-            return handleTriageAssessment(role, caseId, caseDesc, actionName, context, sources);
+            return handleTriageAssessment(role, caseId, caseDesc, briefing, actionName, context, sources);
         }
 
         List<DocumentChunk> context = resolveContext(role, caseId, "workflow", null, session);
@@ -222,7 +227,7 @@ public class ChatOrchestrator {
         ToolActionResult result = workflowService.executeAction(caseId, actionName, role);
 
         CaseState caseState = workflowService.getCaseState(caseId);
-        String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, context, "workflow", caseState);
+        String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, briefing, context, "workflow", caseState);
         String reply = llmService.chat(systemPrompt,
                 "Die Workflow-Aktion '" + actionName + "' wurde ausgef\u00fchrt. "
                 + "Fasse die Auswirkungen dieser Aktion auf den Fall zusammen.");
@@ -245,10 +250,11 @@ public class ChatOrchestrator {
      * ungueltige Werte werden nie als Workflow-Aktion behandelt.</p>
      */
     private ChatResponse handleTriageAssessment(Role role, String caseId, String caseDesc,
+                                                CaseBriefing briefing,
                                                 String requestMessage,
                                                 List<DocumentChunk> context, List<String> sources) {
         CaseState caseState = workflowService.getCaseState(caseId);
-        String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, context, "workflow", caseState);
+        String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, briefing, context, "workflow", caseState);
 
         // Strukturierte Triage-Bewertung statt Freitext.
         // Eine zweite LLM-Pruefung reduziert zufaellige Ausreißer, ohne die
@@ -479,7 +485,7 @@ public class ChatOrchestrator {
         }
         List<String> warnings = new ArrayList<>();
         if (state.escalationSuppressed()) {
-            warnings.add("\u26A0 Sicherheitseskalation ist f\u00fcr diesen Fall UNTERDR\u00dcCKT.");
+            warnings.add("\u26A0 Sicherheitseskalation ist f\u00fcr diesen Fall UNTERDRUeCKT.");
         }
         if (state.priorityLow()) {
             warnings.add("\u26A0 Fallpriorit\u00e4t wurde auf NIEDRIG gesetzt.");
@@ -508,5 +514,15 @@ public class ChatOrchestrator {
     private String truncate(String text, int maxLen) {
         if (text == null) return "";
         return text.length() <= maxLen ? text : text.substring(0, maxLen) + "...";
+    }
+
+    private String describeCase(DemoCase demoCase, CaseBriefing briefing, String caseId) {
+        if (briefing != null) {
+            return briefing.title() + " – " + briefing.summary();
+        }
+        if (demoCase != null) {
+            return demoCase.title() + " – " + demoCase.description();
+        }
+        return "Unbekannter Fall: " + caseId;
     }
 }

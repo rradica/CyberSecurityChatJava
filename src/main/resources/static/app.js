@@ -3,11 +3,14 @@
 const API = '/api';
 let sending = false;
 let activeCaseId = null;
+let activeCaseBriefing = null;
+let availableCases = [];
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
     const input = document.getElementById('chatInput');
     const roleSelect = document.getElementById('roleSelect');
+    const caseSelect = document.getElementById('caseSelect');
 
     // Auto-resize textarea
     input.addEventListener('input', () => {
@@ -30,8 +33,22 @@ document.addEventListener('DOMContentLoaded', () => {
         badge.textContent = text;
     });
 
-    // Show initial greeting
-    showGreeting();
+    caseSelect.addEventListener('change', async () => {
+        const nextCaseId = caseSelect.value;
+        if (!nextCaseId) {
+            activeCaseId = null;
+            activeCaseBriefing = null;
+            renderCasePanel();
+            newConversation();
+            return;
+        }
+        await loadCase(nextCaseId);
+    });
+
+    loadCases().then(() => {
+        renderCasePanel();
+        showGreeting();
+    });
 });
 
 // --- Public Functions ---
@@ -43,6 +60,7 @@ function sendSuggestion(text) {
 
 function showGreeting() {
     const container = document.getElementById('messages');
+    container.innerHTML = '';
     const div = document.createElement('div');
     div.className = 'chat-msg assistant';
 
@@ -52,32 +70,31 @@ function showGreeting() {
     div.appendChild(label);
 
     const content = document.createElement('div');
-    content.innerHTML = simpleMarkdown(
-        'Guten Tag! Ich bin SecAssist, Ihr Assistent f\u00fcr Sicherheitsvorf\u00e4lle.\n\n'
-        + 'Wie kann ich Ihnen helfen? Beschreiben Sie einfach, was passiert ist, '
-        + 'oder w\u00e4hlen Sie eines der Beispiele:');
+    const greetingText = activeCaseBriefing
+        ? `Guten Tag! Der Fall **${activeCaseBriefing.title}** ist geladen.\n\n`
+            + `Sie koennen den Fall frei beschreiben oder einen der vorgeschlagenen Einstiege nutzen.`
+        : 'Guten Tag! Ich bin SecAssist, Ihr Assistent f\u00fcr Sicherheitsvorf\u00e4lle.\n\n'
+            + 'Waehlen Sie bitte zuerst links einen Demo-Fall aus. Danach erhalten Sie eine Lagebeschreibung, sichtbare Artefakte und sinnvolle naechste Schritte.';
+    content.innerHTML = simpleMarkdown(greetingText);
     div.appendChild(content);
 
-    const suggestions = document.createElement('div');
-    suggestions.className = 'suggestions';
-    suggestions.innerHTML = `
-        <button onclick="sendSuggestion('Ich habe eine verd\u00e4chtige Rechnung von einem Lieferanten erhalten, der seine Bankdaten \u00e4ndern will.')">
-            Verd\u00e4chtige Lieferantenrechnung
-        </button>
-        <button onclick="sendSuggestion('Ein Kollege hat eine E-Mail mit einem unbekannten Anhang von einem bekannten Kontakt erhalten.')">
-            Seltsamer E-Mail-Anhang
-        </button>
-        <button onclick="sendSuggestion('Wir haben eine VPN-Passwort-Zur\u00fccksetzung von einem unbekannten Standort erhalten.')">
-            Verd\u00e4chtige VPN-Anfrage
-        </button>`;
-    div.appendChild(suggestions);
+    if (activeCaseBriefing?.recommendedQuestions?.length) {
+        const suggestions = document.createElement('div');
+        suggestions.className = 'suggestions';
+        for (const question of activeCaseBriefing.recommendedQuestions) {
+            const btn = document.createElement('button');
+            btn.textContent = question;
+            btn.onclick = () => sendSuggestion(question);
+            suggestions.appendChild(btn);
+        }
+        div.appendChild(suggestions);
+    }
 
     container.appendChild(div);
 }
 
 function newConversation() {
     document.getElementById('messages').innerHTML = '';
-    activeCaseId = null;
     // User-Notizen auf dem Server zuruecksetzen
     fetch(`${API}/notes`, { method: 'DELETE' }).catch(() => {});
     showGreeting();
@@ -89,6 +106,11 @@ async function sendMessage() {
     const message = input.value.trim();
     if (!message) return;
 
+    if (!activeCaseId) {
+        appendMessage('error', 'Bitte wählen Sie zuerst einen Demo-Fall aus.');
+        return;
+    }
+
     // Remove suggestion buttons when user sends first message
     const suggestions = document.querySelector('.suggestions');
     if (suggestions) suggestions.remove();
@@ -99,7 +121,8 @@ async function sendMessage() {
 
     const body = {
         role: document.getElementById('roleSelect').value,
-        message: message
+        message: message,
+        caseId: activeCaseId
     };
 
     sending = true;
@@ -121,14 +144,160 @@ async function sendMessage() {
         }
 
         const data = await res.json();
-        // Case-ID aus Response ableiten
-        if (!activeCaseId) {
-            activeCaseId = detectCaseFromResponse(data);
-        }
         appendResponse(data);
     } catch (e) {
         removeTyping(typing);
         appendMessage('error', 'Verbindungsfehler. Bitte pr\u00fcfen Sie Ihre Netzwerkverbindung.');
+    } finally {
+        sending = false;
+        document.getElementById('btnSend').disabled = false;
+    }
+}
+
+async function loadCases() {
+    const res = await fetch(`${API}/cases`);
+    if (!res.ok) return;
+    availableCases = await res.json();
+    const select = document.getElementById('caseSelect');
+    select.innerHTML = '<option value="">Bitte Fall auswählen</option>';
+    for (const demoCase of availableCases) {
+        const option = document.createElement('option');
+        option.value = demoCase.id;
+        option.textContent = demoCase.title;
+        select.appendChild(option);
+    }
+}
+
+async function loadCase(caseId) {
+    activeCaseId = caseId;
+    const res = await fetch(`${API}/cases/${caseId}/briefing`);
+    activeCaseBriefing = res.ok ? await res.json() : null;
+    renderCasePanel();
+    newConversation();
+}
+
+function renderCasePanel() {
+    const panel = document.getElementById('casePanel');
+    if (!activeCaseBriefing) {
+        panel.innerHTML = `
+            <div class="case-panel-empty">
+                <h2>Fall auswählen</h2>
+                <p>Waehlen Sie zuerst einen Demo-Fall aus. SecAssist zeigt dann eine kompakte Lagebeschreibung, Artefakte und moegliche naechste Schritte an.</p>
+            </div>`;
+        return;
+    }
+
+    const facts = (activeCaseBriefing.initialFacts || [])
+        .map(fact => `<li>${escHtml(fact)}</li>`)
+        .join('');
+    const artifacts = (activeCaseBriefing.artifacts || [])
+        .map(artifact => `
+            <article class="artifact-card">
+                <div class="artifact-type">${escHtml(artifact.type)}</div>
+                <h4>${escHtml(artifact.title)}</h4>
+                <p>${escHtml(artifact.preview)}</p>
+            </article>`)
+        .join('');
+
+    panel.innerHTML = `
+        <div class="case-panel-header">
+            <div>
+                <div class="case-kicker">Aktiver Fall</div>
+                <h2>${escHtml(activeCaseBriefing.title)}</h2>
+                <p class="case-summary">${escHtml(activeCaseBriefing.summary)}</p>
+            </div>
+            <div class="case-department">${escHtml(activeCaseBriefing.department)}</div>
+        </div>
+        <div class="case-columns">
+            <section class="case-section">
+                <h3>Bekannte Ausgangsfakten</h3>
+                <ul>${facts}</ul>
+            </section>
+            <section class="case-section">
+                <h3>Artefakte</h3>
+                <div class="artifact-grid">${artifacts}</div>
+            </section>
+        </div>
+        <section class="case-section case-actions">
+            <h3>Was möchten Sie als Nächstes tun?</h3>
+            <div class="action-chips">
+                <button onclick="runCaseAction('chat')">Fall analysieren</button>
+                <button onclick="runCaseAction('evidence')">Quellen anzeigen</button>
+                <button onclick="runCaseAction('similar_cases')">Ähnliche Fälle prüfen</button>
+                <button onclick="runCaseAction('handover')">Übergabe vorbereiten</button>
+                <button onclick="prefillNote()">Notiz hinzufügen</button>
+                <button onclick="runCaseAction('workflow')">Triage neu bewerten</button>
+            </div>
+        </section>`;
+}
+
+function prefillNote() {
+    const input = document.getElementById('chatInput');
+    input.value = 'Notiz: ';
+    input.focus();
+}
+
+async function runCaseAction(action) {
+    if (!activeCaseId || sending) return;
+
+    const role = document.getElementById('roleSelect').value;
+    const title = activeCaseBriefing?.title || activeCaseId;
+    const presets = {
+        chat: {
+            label: 'Aktion: Fall analysieren',
+            message: `Bitte analysiere den Fall "${title}" und nenne die wichtigsten Risiken sowie nächsten Schritte.`
+        },
+        evidence: {
+            label: 'Aktion: Quellen anzeigen',
+            message: ''
+        },
+        similar_cases: {
+            label: 'Aktion: Ähnliche Fälle prüfen',
+            message: `Bitte zeige ähnliche Fälle zu "${title}".`
+        },
+        handover: {
+            label: 'Aktion: Übergabe vorbereiten',
+            message: `Bitte erstelle einen Übergabe-Entwurf für den Fall "${title}".`
+        },
+        workflow: {
+            label: 'Aktion: Triage neu bewerten',
+            message: 'Bitte bewerte das Risiko dieses Falls und schlage eine passende nächste Triage-Aktion vor.'
+        }
+    };
+    const preset = presets[action];
+    if (!preset) return;
+
+    const suggestions = document.querySelector('.suggestions');
+    if (suggestions) suggestions.remove();
+    appendMessage('user', preset.label);
+
+    sending = true;
+    document.getElementById('btnSend').disabled = true;
+    const typing = showTyping();
+
+    try {
+        const res = await fetch(`${API}/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                role,
+                caseId: activeCaseId,
+                message: preset.message,
+                action
+            })
+        });
+
+        removeTyping(typing);
+        if (!res.ok) {
+            appendMessage('error', `Es ist ein Fehler aufgetreten (${res.status}). Bitte versuchen Sie es erneut.`);
+            return;
+        }
+
+        const data = await res.json();
+        appendResponse(data);
+    } catch (e) {
+        removeTyping(typing);
+        appendMessage('error', 'Verbindungsfehler. Bitte prüfen Sie Ihre Netzwerkverbindung.');
     } finally {
         sending = false;
         document.getElementById('btnSend').disabled = false;
@@ -312,19 +481,7 @@ function scrollToBottom() {
 }
 
 function detectCaseFromResponse(data) {
-    // Heuristik: bekannte Fall-IDs aus Quellnamen ableiten
-    const knownCases = [
-        'suspicious_supplier_invoice', 'strange_attachment',
-        'suspicious_vpn_reset', 'finance_phishing'
-    ];
-    const text = (data.reply || '') + ' ' + (data.sources || []).join(' ');
-    for (const c of knownCases) {
-        const keywords = c.split('_');
-        if (keywords.some(kw => text.toLowerCase().includes(kw) && kw.length > 3)) {
-            return c;
-        }
-    }
-    return null;
+    return data?.securityContext?.caseId || activeCaseId;
 }
 
 /** Minimal Markdown to HTML */

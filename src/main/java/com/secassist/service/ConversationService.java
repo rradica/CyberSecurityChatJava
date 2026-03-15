@@ -79,7 +79,7 @@ public class ConversationService {
                 intent.caseId(), intent.intent(), intent.summary());
 
         // Case aus Erkennung oder Session-Fallback
-        String caseId = resolveCase(intent, session);
+        String caseId = resolveCase(intent, session, request.caseId());
 
         if (caseId == null) {
             return ChatResponse.text(
@@ -111,7 +111,10 @@ public class ConversationService {
     /**
      * Ermittelt die aktive Case-ID: Erkennung hat Vorrang, dann Session-Fallback.
      */
-    private String resolveCase(ConversationIntent intent, HttpSession session) {
+    private String resolveCase(ConversationIntent intent, HttpSession session, String explicitCaseId) {
+        if (explicitCaseId != null && !explicitCaseId.isBlank()) {
+            return explicitCaseId;
+        }
         if (intent.hasCaseId()) {
             return intent.caseId();
         }

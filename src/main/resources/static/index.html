@@ -29,6 +29,13 @@
                 </select>
             </div>
 
+            <div class="sidebar-section">
+                <label for="caseSelect">Demo-Fall</label>
+                <select id="caseSelect">
+                    <option value="">Bitte Fall auswählen</option>
+                </select>
+            </div>
+
             <button class="btn-new-chat" onclick="newConversation()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -50,6 +57,13 @@
                 <h1>Sicherheitsvorfall-Assistent</h1>
                 <span class="role-badge" id="roleBadge">Mitarbeiter</span>
             </header>
+
+            <section class="case-panel" id="casePanel">
+                <div class="case-panel-empty">
+                    <h2>Fall auswählen</h2>
+                    <p>Waehlen Sie zuerst einen Demo-Fall aus. SecAssist zeigt dann eine kompakte Lagebeschreibung, Artefakte und moegliche naechste Schritte an.</p>
+                </div>
+            </section>
 
             <div class="messages" id="messages">
             </div>

@@ -238,4 +238,18 @@ class ConversationServiceTest {
         // Kein SecurityContext fuer Notiz-Antworten (reduzierte UI-Komplexitaet)
         assertThat(response.securityContext()).isNull();
     }
+
+    @Test
+    void explicitCaseIdFromUiOverridesDetectedCase() {
+        when(llmService.detectIntent(anyString(), any()))
+                .thenReturn(new ConversationIntent(
+                        "vpn_password_reset", "chat", "detected wrong case"));
+
+        var req = new ConversationRequest("employee", "Bitte analysiere den Fall", "suspicious_supplier_invoice");
+        service.processMessage(req, session);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(ChatRequest.class);
+        verify(orchestrator).processRequest(captor.capture(), any());
+        assertThat(captor.getValue().caseId()).isEqualTo("suspicious_supplier_invoice");
+    }
 }

@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.secassist.model.CaseArtifact;
+import com.secassist.model.CaseBriefing;
 import com.secassist.model.CaseState;
 import com.secassist.model.DocumentChunk;
 import com.secassist.model.Role;
@@ -33,7 +35,7 @@ public class PromptBuilder {
      */
     public String buildSystemPrompt(Role role, String caseDesc,
                                     List<DocumentChunk> context, String mode) {
-        return buildSystemPrompt(role, caseDesc, context, mode, null);
+        return buildSystemPrompt(role, caseDesc, null, context, mode, null);
     }
 
     /**
@@ -49,6 +51,16 @@ public class PromptBuilder {
     public String buildSystemPrompt(Role role, String caseDesc,
                                     List<DocumentChunk> context, String mode,
                                     CaseState caseState) {
+        return buildSystemPrompt(role, caseDesc, null, context, mode, caseState);
+    }
+
+    /**
+     * Baut den System-Prompt mit optionalem deterministischem Fallbriefing.
+     */
+    public String buildSystemPrompt(Role role, String caseDesc,
+                                    CaseBriefing briefing,
+                                    List<DocumentChunk> context, String mode,
+                                    CaseState caseState) {
         StringBuilder sb = new StringBuilder();
         sb.append(SYSTEM_PREAMBLE).append("\n\n");
 
@@ -62,6 +74,10 @@ public class PromptBuilder {
         sb.append("Aktuelle Benutzerrolle: ").append(role.name()).append("\n");
         sb.append("Aktueller Fall: ").append(caseDesc).append("\n");
         sb.append("Modus: ").append(mode).append("\n\n");
+
+        if (briefing != null) {
+            appendCaseBriefing(sb, briefing);
+        }
 
         // Incident-Effekte anzeigen, damit Folgeantworten den Zustand beruecksichtigen
         if (caseState != null && caseState.hasActiveEffects()) {
@@ -91,6 +107,34 @@ public class PromptBuilder {
         }
 
         return sb.toString();
+    }
+
+    /**
+     * Fuegt einen festen, nicht vom Modell erratenen Fallkontext ein.
+     */
+    private void appendCaseBriefing(StringBuilder sb, CaseBriefing briefing) {
+        sb.append("=== Fallbriefing ===\n");
+        sb.append("Titel: ").append(briefing.title()).append("\n");
+        sb.append("Zusammenfassung: ").append(briefing.summary()).append("\n");
+        sb.append("Betroffene Einheit: ").append(briefing.department()).append("\n\n");
+
+        if (!briefing.initialFacts().isEmpty()) {
+            sb.append("Bekannte Ausgangsfakten:\n");
+            for (String fact : briefing.initialFacts()) {
+                sb.append("- ").append(fact).append("\n");
+            }
+            sb.append("\n");
+        }
+
+        if (!briefing.artifacts().isEmpty()) {
+            sb.append("Sichtbare Artefakte:\n");
+            for (CaseArtifact artifact : briefing.artifacts()) {
+                sb.append("- [").append(artifact.type()).append("] ")
+                        .append(artifact.title()).append(": ")
+                        .append(artifact.preview()).append("\n");
+            }
+            sb.append("\n");
+        }
     }
 
     /**

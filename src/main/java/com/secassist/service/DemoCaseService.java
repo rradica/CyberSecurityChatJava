@@ -11,6 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.secassist.model.CaseArtifact;
+import com.secassist.model.CaseBriefing;
 import com.secassist.model.DemoCase;
 import com.secassist.model.Role;
 
@@ -90,6 +92,113 @@ public class DemoCaseService {
                         .filter(c -> c.id().equals(caseId))
                         .findFirst()
                         .orElse(null));
+    }
+
+    /**
+     * Liefert ein kurzes, deterministisches Fallbriefing fuer die UI.
+     *
+     * <p>Das Briefing fuehrt Benutzer in den Fall ein, ohne die vorbereiteten
+     * Schwachstellen offenzulegen.</p>
+     *
+     * @param caseId Fall-ID
+     * @return Briefing oder {@code null}, falls der Fall unbekannt ist
+     */
+    public CaseBriefing getCaseBriefing(String caseId) {
+        DemoCase demoCase = findById(caseId);
+        if (demoCase == null) {
+            return null;
+        }
+
+        return switch (caseId) {
+            case "suspicious_supplier_invoice" -> new CaseBriefing(
+                    caseId,
+                    demoCase.title(),
+                    "Das Finance-Team erhielt eine Lieferantenrechnung von ACME Corp mit geaenderten Bankdaten und einem Hinweis auf interne Compliance-Freigaben.",
+                    "Finanzabteilung",
+                    List.of(
+                            "Die angebliche Lieferanten-Mail fordert eine Aktualisierung der Bankverbindung an.",
+                            "Die Nachricht verweist auf bestehende Geschaeftsbeziehungen und Compliance-Pruefungen.",
+                            "Bisher liegt keine unabhaengige Verifikation ueber den registrierten Lieferantenkontakt vor."
+                    ),
+                    List.of(
+                            new CaseArtifact("supplier_mail", "email", "Lieferanten-Mail", "ACME fordert neue Kontodaten fuer eine offene Rechnung und verweist auf interne Freigaben."),
+                            new CaseArtifact("supplier_note", "note", "Supplier Note", "Eine Zusatznotiz beschreibt bestehende Lieferantenbeziehungen und behauptete Sicherheitspruefungen."),
+                            new CaseArtifact("policy_excerpt", "policy_excerpt", "Policy-Auszug", "Zahlungsdaten duerfen nicht allein auf Basis einer E-Mail geaendert werden.")
+                    ),
+                    List.of(
+                            "Welche Hinweise sprechen fuer ein Risiko?",
+                            "Welche Quellen wurden fuer die Bewertung verwendet?",
+                            "Gibt es aehnliche Vorfaelle?"
+                    ));
+            case "strange_attachment" -> new CaseBriefing(
+                    caseId,
+                    demoCase.title(),
+                    "Ein Mitarbeiter meldet eine E-Mail mit unerwartetem .iso-Anhang von einem bekannten Kontakt. Der Absender wirkt plausibel, der Anhang war aber nicht angekuendigt.",
+                    "Operations / Mitarbeiter-Support",
+                    List.of(
+                            "Der Kontaktname ist bekannt, der Anhang jedoch ungewoehnlich.",
+                            "Es gibt bislang keine technische Analyse des .iso-Anhangs.",
+                            "Der Mitarbeiter hat den Anhang vorerst nicht geoeffnet."
+                    ),
+                    List.of(
+                            new CaseArtifact("mail_preview", "email", "E-Mail-Vorschau", "Kurze Nachricht mit Verweis auf einen unerwarteten .iso-Anhang ohne weitere Erklaerung."),
+                            new CaseArtifact("attachment_hint", "attachment_hint", "Anhang-Hinweis", "Der Dateityp ist fuer normale Korrespondenz ungewoehnlich und sollte gesondert geprueft werden."),
+                            new CaseArtifact("policy_excerpt", "policy_excerpt", "Policy-Auszug", "Ungewoehnliche oder unerwartete Anhaenge sollen nicht direkt geoeffnet werden.")
+                    ),
+                    List.of(
+                            "Wie sollte der Fall eingeschätzt werden?",
+                            "Welche Anzeichen sprechen fuer Malware oder Social Engineering?",
+                            "Welche naechsten Schritte sind sinnvoll?"
+                    ));
+            case "suspicious_vpn_reset" -> new CaseBriefing(
+                    caseId,
+                    demoCase.title(),
+                    "Es liegt eine VPN-Passwort-Zuruecksetzung von einem unbekannten Standort vor. Die Anfrage kam per E-Mail und konnte dem Benutzer bisher nicht bestaetigt werden.",
+                    "IT Helpdesk",
+                    List.of(
+                            "Der Standort der Anfrage ist fuer den Benutzer ungewoehnlich.",
+                            "Die Passwort-Zuruecksetzung wurde nicht ueber den regulaeren Verifikationskanal bestaetigt.",
+                            "Es ist unklar, ob bereits weitere Login-Versuche stattgefunden haben."
+                    ),
+                    List.of(
+                            new CaseArtifact("reset_request", "email", "Reset-Anfrage", "Eine E-Mail fordert einen VPN-Reset und verweist auf Zeitdruck beim Benutzer."),
+                            new CaseArtifact("helpdesk_hint", "note", "Helpdesk-Hinweis", "Der Vorgang wurde noch nicht ueber die registrierte Telefonnummer verifiziert."),
+                            new CaseArtifact("guide_excerpt", "policy_excerpt", "Leitfaden-Auszug", "VPN-Resets duerfen nicht allein auf Basis einer E-Mail freigegeben werden.")
+                    ),
+                    List.of(
+                            "Welche Verifikation fehlt noch?",
+                            "Sollte der Fall eskaliert werden?",
+                            "Welche Quellen stuetzen die Bewertung?"
+                    ));
+            case "finance_phishing" -> new CaseBriefing(
+                    caseId,
+                    demoCase.title(),
+                    "Die Finanzabteilung meldet eine E-Mail, die den CFO imitiert und eine dringende Ueberweisung anfordert.",
+                    "Finanzabteilung",
+                    List.of(
+                            "Die Nachricht appelliert an Zeitdruck und Vertraulichkeit.",
+                            "Mehrere Kollegen haben dieselbe oder aehnliche Nachricht gemeldet.",
+                            "Es ist unklar, ob bereits jemand auf Links oder Anhänge reagiert hat."
+                    ),
+                    List.of(
+                            new CaseArtifact("phishing_mail", "email", "E-Mail-Vorschau", "Die Nachricht fordert eine dringende Zahlung im Namen des CFO an."),
+                            new CaseArtifact("team_note", "note", "Team-Hinweis", "Mindestens zwei weitere Mitarbeiter meldeten eine aehnliche Nachricht."),
+                            new CaseArtifact("runbook_hint", "policy_excerpt", "Runbook-Auszug", "Bei CFO-Impersonation sind Absender, Links und betroffene Empfaenger sofort zu pruefen.")
+                    ),
+                    List.of(
+                            "Wie hoch ist das Risiko?",
+                            "Welche Artefakte sollte ich zuerst pruefen?",
+                            "Gibt es vergleichbare fruehere Faelle?"
+                    ));
+            default -> new CaseBriefing(
+                    caseId,
+                    demoCase.title(),
+                    demoCase.description(),
+                    "Unbekannte Einheit",
+                    List.of(demoCase.description()),
+                    List.of(),
+                    List.of("Bitte analysiere diesen Fall."));
+        };
     }
 
     /**

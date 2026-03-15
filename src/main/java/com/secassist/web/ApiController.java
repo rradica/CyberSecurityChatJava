@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.secassist.model.CaseBriefing;
 import com.secassist.model.ChatRequest;
 import com.secassist.model.ChatResponse;
 import com.secassist.model.ConversationRequest;
@@ -80,6 +81,12 @@ public class ApiController {
     @GetMapping("/cases")
     public List<DemoCase> getCases() {
         return demoCaseService.getPublicCases();
+    }
+
+    /** Gibt das Fallbriefing fuer einen Demo-Fall zurueck. */
+    @GetMapping("/cases/{caseId}/briefing")
+    public CaseBriefing getCaseBriefing(@PathVariable String caseId) {
+        return demoCaseService.getCaseBriefing(caseId);
     }
 
     /** Gibt die verfuegbaren Rollen zurueck. */

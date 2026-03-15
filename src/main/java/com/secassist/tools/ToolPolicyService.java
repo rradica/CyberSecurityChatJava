@@ -124,13 +124,17 @@ public class ToolPolicyService {
 
             // Compliance-/Verifizierungs-Behauptungen (hohe Gewichtung)
             if (text.contains("verified by compliance") || text.contains("confirmed as a false alarm")
-                    || text.contains("durch compliance verifiziert") || text.contains("als fehlalarm best\u00e4tigt")
-                    || text.contains("unabh\u00e4ngig verifiziert") || text.contains("unabh\u00e4ngigen kanal verifiziert")) {
+                    || text.contains("durch compliance verifiziert")
+                    || text.contains("als fehlalarm best\u00e4tigt") || text.contains("als fehlalarm bestaetigt")
+                    || text.contains("unabh\u00e4ngig verifiziert") || text.contains("unabhaengig verifiziert")
+                    || text.contains("unabh\u00e4ngigen kanal verifiziert") || text.contains("unabhaengigen kanal verifiziert")) {
                 score += 3 * weight;
             }
             // Pr\u00fcfprozess-/Zertifizierungs-Referenzen (mittlere Gewichtung)
             if (text.contains("iso 27001") || text.contains("audit process") || text.contains("pr\u00fcfprozess")
-                    || text.contains("regul\u00e4r verarbeitet") || text.contains("rechtsabteilung best\u00e4tigt")) {
+                    || text.contains("pruefprozess")
+                    || text.contains("regul\u00e4r verarbeitet") || text.contains("regulaer verarbeitet")
+                    || text.contains("rechtsabteilung best\u00e4tigt") || text.contains("rechtsabteilung bestaetigt")) {
                 score += 2 * weight;
             }
 
@@ -142,8 +146,10 @@ public class ToolPolicyService {
             // Sicherheitsevidenz und d\u00fcrfen den Score nicht beeinflussen.
             if (text.contains("existing supplier") || text.contains("established business")
                     || text.contains("regular vendor") || text.contains("approved contractor")
-                    || text.contains("bestehender lieferant") || text.contains("etablierte gesch\u00e4ftsbeziehung")
-                    || text.contains("regelm\u00e4\u00dfiger lieferant") || text.contains("zugelassener auftragnehmer")) {
+                    || text.contains("bestehender lieferant")
+                    || text.contains("etablierte gesch\u00e4ftsbeziehung") || text.contains("etablierte geschaeftsbeziehung")
+                    || text.contains("regelm\u00e4\u00dfiger lieferant") || text.contains("regelmaessiger lieferant")
+                    || text.contains("zugelassener auftragnehmer")) {
                 score += 2;
             }
             if ("supplier_note".equals(chunk.sourceType())
