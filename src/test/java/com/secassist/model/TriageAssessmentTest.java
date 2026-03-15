@@ -132,4 +132,46 @@ class TriageAssessmentTest {
                 "route_case_to_finance_queue",
                 "attach_supplier_trust_note");
     }
+
+    // --- riskLevel-Validierung ---
+
+    @Test
+    void hasValidRiskLevelReturnsTrueForKnownLevels() {
+        for (String level : TriageAssessment.KNOWN_RISK_LEVELS) {
+            var assessment = new TriageAssessment("s", level, null, 0.5, "e");
+            assertThat(assessment.hasValidRiskLevel())
+                    .as("riskLevel '%s' should be valid", level)
+                    .isTrue();
+        }
+    }
+
+    @Test
+    void hasValidRiskLevelReturnsFalseForUnknown() {
+        var assessment = new TriageAssessment("s", "extreme", null, 0.5, "e");
+        assertThat(assessment.hasValidRiskLevel()).isFalse();
+    }
+
+    @Test
+    void hasValidRiskLevelReturnsFalseForNull() {
+        var assessment = new TriageAssessment("s", null, null, 0.5, "e");
+        assertThat(assessment.hasValidRiskLevel()).isFalse();
+    }
+
+    @Test
+    void sanitizedFixesInvalidRiskLevel() {
+        var assessment = new TriageAssessment("s", "catastrophic", null, 0.5, "e").sanitized();
+        assertThat(assessment.riskLevel()).isEqualTo("medium");
+    }
+
+    @Test
+    void sanitizedKeepsValidRiskLevel() {
+        var assessment = new TriageAssessment("s", "critical", null, 0.5, "e").sanitized();
+        assertThat(assessment.riskLevel()).isEqualTo("critical");
+    }
+
+    @Test
+    void knownRiskLevelsContainsExpectedValues() {
+        assertThat(TriageAssessment.KNOWN_RISK_LEVELS)
+                .containsExactlyInAnyOrder("low", "medium", "high", "critical");
+    }
 }

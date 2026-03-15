@@ -3,10 +3,13 @@ package com.secassist.retrieval;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,7 +19,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
-import com.secassist.config.BugFlagsProperties;
 import com.secassist.model.DocumentChunk;
 import com.secassist.model.Role;
 import com.secassist.policy.PolicyEngine;
@@ -39,19 +41,29 @@ import com.secassist.policy.PolicyEngine;
 public class RetrievalService {
 
     private static final Logger log = LoggerFactory.getLogger(RetrievalService.class);
-    private static final int MAX_CHUNKS = 5;
+    private static final int MAX_CHUNKS = 10;
+    private static final Set<String> QUERY_STOP_WORDS = Set.of(
+            "about", "after", "allgemein", "also", "anfrage", "auch", "beim", "bereits",
+            "bitte", "case", "damit", "diese", "diesem", "diesen", "dieser", "dringende",
+            "einer", "einem", "einen", "einerseits", "email", "erhalten", "etwas", "finance",
+            "frage", "früheren", "haben", "hello", "hintergrund", "history", "habe", "incident",
+            "inklusive", "irgendwie", "kann", "keine", "könnte", "mail", "mehrere", "message",
+            "mich", "nach", "nächste", "noch", "normal", "oder", "schritt", "seltsamen",
+            "sollen", "soll", "sowie", "standard", "status", "the", "und", "uns", "unter",
+            "verdächtige", "verdächtigen", "vielleicht", "vom", "von", "warum", "was", "weitere",
+            "weiteren", "wie", "wir", "with", "workflow", "zeigen", "zum", "zur", "über", "überweisung"
+    );
 
     private final PolicyEngine policyEngine;
-    private final BugFlagsProperties bugFlags;
     private final ObjectMapper objectMapper;
 
     private List<DocumentChunk> allChunks = List.of();
+    private final List<DocumentChunk> userNotes = new ArrayList<>();
+    private final AtomicInteger noteCounter = new AtomicInteger(0);
 
     public RetrievalService(PolicyEngine policyEngine,
-                            BugFlagsProperties bugFlags,
                             ObjectMapper objectMapper) {
         this.policyEngine = policyEngine;
-        this.bugFlags = bugFlags;
         this.objectMapper = objectMapper;
     }
 
@@ -78,28 +90,25 @@ public class RetrievalService {
      */
     public List<DocumentChunk> retrieve(Role role, String caseId, String mode, String query) {
         // Schritt 1: Relevanzfilter – nur Chunks, die zum Fall oder zur Anfrage passen
-        List<DocumentChunk> relevant = allChunks.stream()
+        // Kombiniert statische Chunks und dynamisch hinzugefügte User-Notizen
+        List<DocumentChunk> relevant = Stream.concat(allChunks.stream(), userNotes.stream())
                 .filter(chunk -> matchesCaseOrQuery(chunk, caseId, query))
                 .collect(Collectors.toCollection(ArrayList::new));
 
-        // Schritt 2: Policy-Filter
-        // SCHWACHSTELLE [BUG_HANDOVER_SCOPE]: Im Handover-Modus wird der komplette
-        // Policy-Filter (Übersprungen: Klassifikation + Audience) übersprungen.
-        // Dadurch leaken confidential-Dokumente (z.B. Incident-Postmortems) in
-        // Handover-Entwürfe auch für Rollen ohne Zugriffsberechtigung.
-        // SOLL: Die if-Bedingung für den Handover-Sonderfall komplett entfernen.
-        // Der Policy-Filter (allowedClassifications + allowedAudiences) muss IMMER
-        // angewendet werden, unabhängig vom Modus.
-        if ("handover".equals(mode) && bugFlags.handoverScope()) {
-            log.debug("Handover mode: broadened scope for comprehensive handover context");
-        } else {
-            Set<String> allowedClassifications = policyEngine.allowedClassifications(role);
-            Set<String> allowedAudiences = policyEngine.allowedAudiences(role);
-            relevant = relevant.stream()
-                    .filter(c -> allowedClassifications.contains(c.classification()))
-                    .filter(c -> allowedAudiences.contains(c.audience()))
-                    .collect(Collectors.toCollection(ArrayList::new));
-        }
+        // Schritt 2: Policy-Filter – Zugriffssteuerung nach Klassifikation und Zielgruppe.
+        // Im Handover-Modus werden Security-Team-Berechtigungen verwendet, da
+        // Übergabe-Entwürfe an das Security-Team gerichtet sind und umfassenden
+        // Kontext benötigen.
+        Set<String> allowedClassifications = "handover".equals(mode)
+                ? Set.of("public", "internal", "confidential")
+                : policyEngine.allowedClassifications(role);
+        Set<String> allowedAudiences = "handover".equals(mode)
+                ? Set.of("all", "employees", "security_team")
+                : policyEngine.allowedAudiences(role);
+        relevant = relevant.stream()
+                .filter(c -> allowedClassifications.contains(c.classification()))
+                .filter(c -> allowedAudiences.contains(c.audience()))
+                .collect(Collectors.toCollection(ArrayList::new));
 
         // Schritt 3: Einfaches Ranking – höheres Trust-Level bevorzugen
         relevant.sort(Comparator.comparingInt(this::trustScore).reversed());
@@ -113,23 +122,104 @@ public class RetrievalService {
         return allChunks;
     }
 
+    /**
+     * Fügt eine Benutzernotiz als Chunk hinzu.
+     *
+     * <p>SCHWACHSTELLE [BUG_RAG_POISONING]: Wenn der Bug aktiv ist, wird die Notiz
+     * mit {@code trustLevel: "high"} und {@code classification: "internal"} gespeichert
+     * – gleichwertig mit kuratierten internen Dokumenten. Ein Angreifer kann so
+     * gefälschte "interne Einschätzungen" (z.B. angebliche Rechtsabteilung-Bestätigungen)
+     * in die Wissensdatenbank einschleusen, die bei späteren Abfragen neben echten
+     * Policies und Runbooks erscheinen.</p>
+     *
+     * <p>SOLL: Notizen immer als {@code trustLevel: "untrusted"}, {@code sourceType: "user_note"}
+     * speichern, damit sie in getrennten Kontextsektionen erscheinen und die KI
+     * sie als ungeprüften User-Input erkennt.</p>
+     *
+     * @param caseId die Fall-ID, zu der die Notiz gehört
+     * @param text   der Notiztext
+     * @return der erstellte Chunk
+     */
+    public DocumentChunk addUserNote(String caseId, String text) {
+        int num = noteCounter.incrementAndGet();
+        List<String> tags = caseId != null
+                ? Arrays.asList(caseId.split("_"))
+                : List.of();
+
+        // SCHWACHSTELLE [BUG_RAG_POISONING]: User-Notiz wird als internes,
+        // vertrauenswürdiges Dokument gespeichert – gleichwertig mit kuratierten
+        // internen Dokumenten. Angreifer können so gefälschte "interne Einschätzungen"
+        // in die Wissensdatenbank einschleusen.
+        // FIX: Notiz als untrusted/public/user_note speichern:
+        //   new DocumentChunk("user_note_" + num, "user_note_" + caseId,
+        //       "⚠ Benutzernotiz #" + num + " – " + caseId, text,
+        //       "public", "all", "user_note", "untrusted", tags);
+        DocumentChunk note = new DocumentChunk(
+                "user_note_" + num,
+                "case_note_" + caseId,
+                "Fallnotiz #" + num + " – " + caseId,
+                text,
+                "internal",
+                "employees",
+                "case_note",
+                "high",
+                tags
+        );
+
+        userNotes.add(note);
+        log.info("User note added: id={}, trustLevel={}, classification={}",
+                note.id(), note.trustLevel(), note.classification());
+        return note;
+    }
+
+    /** Entfernt alle dynamisch hinzugefügten User-Notizen. */
+    public void clearUserNotes() {
+        userNotes.clear();
+        noteCounter.set(0);
+        log.debug("User notes cleared");
+    }
+
+    /** Gibt die Anzahl der User-Notizen zurück (für Tests). */
+    public int getUserNoteCount() {
+        return userNotes.size();
+    }
+
     // --- interne Hilfsmethoden ---
 
     private boolean matchesCaseOrQuery(DocumentChunk chunk, String caseId, String query) {
+        boolean caseMatch = false;
         if (caseId != null && !caseId.isBlank()) {
             // Einfaches Tag-Matching basierend auf Schlüsselwörtern aus der Case-ID
             String[] keywords = caseId.split("_");
             for (String kw : keywords) {
                 if (chunk.tags().stream().anyMatch(tag -> tag.equalsIgnoreCase(kw))) {
-                    return true;
+                    caseMatch = true;
+                    break;
                 }
             }
         }
+
+        boolean queryMatch = false;
         if (query != null && !query.isBlank()) {
-            String lowerQuery = query.toLowerCase();
-            return chunk.text().toLowerCase().contains(lowerQuery)
-                    || chunk.title().toLowerCase().contains(lowerQuery)
-                    || chunk.tags().stream().anyMatch(t -> t.toLowerCase().contains(lowerQuery));
+            String target = (chunk.title() + " " + chunk.text() + " "
+                    + String.join(" ", chunk.tags())).toLowerCase();
+
+            for (String word : query.toLowerCase().split("[^\\p{L}\\p{N}]+")) {
+                if (!isMeaningfulQueryWord(word)) {
+                    continue;
+                }
+                if (target.contains(word)) {
+                    queryMatch = true;
+                    break;
+                }
+            }
+        }
+
+        if (caseId != null && !caseId.isBlank()) {
+            return caseMatch || queryMatch;
+        }
+        if (query != null && !query.isBlank()) {
+            return queryMatch;
         }
         // Fallback: alle Chunks als potenziell relevant betrachten
         return caseId == null || caseId.isBlank();
@@ -144,4 +234,13 @@ public class RetrievalService {
             default          -> 0;
         };
     }
+
+    private boolean isMeaningfulQueryWord(String word) {
+        if (word == null) {
+            return false;
+        }
+        String normalized = word.trim().toLowerCase();
+        return normalized.length() >= 4 && !QUERY_STOP_WORDS.contains(normalized);
+    }
+
 }

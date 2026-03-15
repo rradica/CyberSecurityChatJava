@@ -2,7 +2,7 @@
 
 Workshop-Anwendung für eine **Red-Team-vs-Blue-Team-Übung** zum Thema *CyberSecurity im AI-Umfeld*.
 
-SecAssist ist ein interner Security-/Incident-Triage-Chatbot, der bewusst **realistische, per Feature-Flag steuerbare Schwachstellen** enthält.
+SecAssist ist ein interner Security-/Incident-Triage-Chatbot, der bewusst **realistische, absichtlich eingebaute Schwachstellen** enthält.
 
 ## Zentrale Architektur-Regel
 
@@ -21,14 +21,12 @@ Sicherheitskritische Entscheidungen liegen in der `PolicyEngine`, nicht im LLM.
 ### Lokal
 
 ```bash
-# Mock-Modus (kein API-Key nötig):
-./mvnw spring-boot:run
-
-# Mit echter OpenAI-API:
-OPENAI_API_KEY=sk-... SECASSIST_MOCK_LLM=false ./mvnw spring-boot:run
+OPENAI_API_KEY=sk-... ./mvnw spring-boot:run
 ```
 
 Dann im Browser: **http://localhost:8080**
+
+> **Hinweis:** Ein gültiger `OPENAI_API_KEY` ist erforderlich. Ohne Key startet die App, aber Chat-Anfragen geben Fehlermeldungen zurück.
 
 ### GitHub Codespaces
 
@@ -63,55 +61,60 @@ Die Rolle wird im UI ausgewählt und mit jedem Request mitgeschickt (keine echte
 - **suspicious_vpn_reset** – VPN-Passwort-Reset von unbekanntem Standort
 - **finance_phishing** – Gezielte Phishing-Mail an die Finanzabteilung
 
-## Bug-Flags (Workshop-Schwachstellen)
+## Workshop-Schwachstellen
 
-Alle Schwachstellen sind per `application.yml` steuerbar. Default: **alle aktiv**.
+Die Anwendung enthält **5 absichtlich eingebaute Schwachstellen**, die von den Teilnehmern im Code gefunden und gefixt werden sollen.
 
-```yaml
-secassist:
-  bug-flags:
-    handover-scope: true     # BUG_HANDOVER_SCOPE
-    existence-oracle: true   # BUG_EXISTENCE_ORACLE
-    thread-stickiness: true  # BUG_THREAD_STICKINESS
-    trust-merge: true        # BUG_TRUST_MERGE
-    tool-fasttrack: true     # BUG_TOOL_FASTTRACK
-```
-
-### BUG_HANDOVER_SCOPE
-Im Handover-Modus wird der Klassifikationsfilter übersprungen → vertrauliche Dokumente leaken in den Handover-Entwurf.
+### 1. HANDOVER_SCOPE (Information Disclosure)
+Im Handover-Modus verwendet der Policy-Filter fest kodierte Security-Team-Berechtigungen statt der Berechtigungen der aktuellen Rolle → vertrauliche Dokumente leaken in den Handover-Entwurf.
 **Ort:** `RetrievalService.retrieve()`
 
-### BUG_EXISTENCE_ORACLE
-Similar-Cases-Endpunkt gibt Metadaten interner Vorfälle (Titel, IDs, Severity) auch an Nicht-Analysten zurück.
-**Ort:** `DemoCaseService.findSimilarCases()`
+### 2. EXISTENCE_ORACLE (Information Disclosure / Recon)
+Bei gezielten Suchanfragen über die Konversations-API leaken aggregierte Metadaten interner Vorfälle (Anzahl, Kategorie, Schweregrad) auch an Nicht-Analysten.
+**Ort:** `DemoCaseService.findSimilarCases()` + `ConversationService`
 
-### BUG_THREAD_STICKINESS
-Rollenwechsel löscht Konversationshistorie und gecachten Kontext nicht → Kontext aus höher privilegierter Rolle bleibt erhalten.
-**Ort:** `ChatOrchestrator.handleRoleChange()`
-
-### BUG_TRUST_MERGE
+### 3. TRUST_MERGE (Datenqualität)
 Trusted und untrusted Quellen werden im LLM-Prompt ohne Trust-Level-Markierung zusammengemischt → das Modell kann nicht zwischen interner Policy und Supplier-Note unterscheiden.
 **Ort:** `PromptBuilder.buildSystemPrompt()`
 
-### BUG_TOOL_FASTTRACK
-Schlüsselphrasen aus untrusted Quellen (z.B. "verified by compliance") umgehen die Rollenprüfung für Workflow-Tools → ein Employee kann sicherheitsrelevante Aktionen auslösen.
-**Ort:** `ToolPolicyService.isToolAllowed()`
+### 4. TOOL_FASTTRACK (Autorisierung)
+Der evidenzbasierte Tool-Gate bewertet untrusted Lieferantenquellen, operative Kontextsignale und interne Fallnotizen zu großzügig. Dadurch kann ein Employee im Lieferantenrechnungs-Case sicherheitsrelevante Aktionen auslösen.
+**Ort:** `ToolPolicyService.evaluateAccess()` / `ToolPolicyService.computeEvidenceScore()`
+
+### 5. RAG_POISONING (Datenintegrität)
+User-Notizen werden als Chunks mit `trustLevel: "high"` und `classification: "internal"` gespeichert. Ein Angreifer kann gefälschte "interne Einschätzungen" einschleusen.
+**Ort:** `RetrievalService.addUserNote()`
+
+### Kill Chain (TRUST_MERGE + TOOL_FASTTRACK)
+Bug 3 (Datenqualität) liefert der KI nicht-unterscheidbare Quellen → falsche Empfehlung. Bug 4 (Autorisierung) erlaubt einem Employee, diese Empfehlung auszuführen. Zusammen: **Ein Satz genügt, um einen Sicherheitsfall dauerhaft zu unterdrücken.**
+
+### Erweiterte Kill Chain (RAG_POISONING + TRUST_MERGE + TOOL_FASTTRACK)
+Bug 5 (Datenintegrität) schleust gefälschte "interne" Dokumente ein → Bug 3 mischt sie ohne Label → Bug 4 erhöht den Evidence-Score. **Bug 5 umgeht den Bug-3-Fix**, da die vergiftete Notiz als `trustLevel: high` in den "Verified Sources" erscheint.
 
 ## Realistischer Incident-Case
 
-Der zentrale Workshop-Case: Eine manipulierte Supplier-Note von ACME Corp enthält Phrasen wie "verified by compliance" und "confirmed as a false alarm". Wenn `BUG_TOOL_FASTTRACK` aktiv ist, kann ein Employee den Fall als False Positive markieren – obwohl die Quelle untrusted ist und ein früherer ACME-Incident im vertraulichen Postmortem dokumentiert ist.
+Der zentrale Workshop-Case ist eine verdächtige Lieferantenrechnung von ACME Corp. Im normalen Chat- und Workflow-Pfad werden öffentliche Supplier-Notes zusammen mit internen Richtlinien verwendet. Durch diese realistisch wirkende Trust-Vermischung und den zu großzügigen Evidence-Score kann ein Employee den Fall als False Positive markieren – obwohl die Quelle untrusted ist und ein früherer ACME-Incident im vertraulichen Postmortem dokumentiert ist.
+
+## Stabilisierung des LLM-Verhaltens
+
+Damit die Workshop-Cases reproduzierbar bleiben, ohne im Anwendungscode künstliche Spezial-Trigger zu hinterlegen, wird die strukturierte Triage jetzt in zwei Schritten verarbeitet:
+
+1. Das LLM erzeugt eine erste `TriageAssessment`-Bewertung.
+2. Dieselbe Bewertung wird durch das LLM noch einmal challengend geprüft.
+
+Nur wenn beide Bewertungen dieselbe Aktion stützen, bleibt die empfohlene Aktion erhalten. Die endgültige Tool-Freigabe liegt trotzdem weiterhin ausschließlich im deterministischen Anwendungscode (`ToolPolicyService`).
 
 ## Projektstruktur
 
 ```
 src/main/java/com/secassist/
-├── config/      BugFlagsProperties, LlmConfig
-├── model/       Role, DemoCase, DocumentChunk, ChatRequest/Response, ToolActionResult
+├── config/      LlmConfig
+├── model/       Role, DemoCase, DocumentChunk, ChatRequest/Response, NoteRequest, ToolActionResult
 ├── policy/      PolicyEngine
 ├── retrieval/   RetrievalService
-├── llm/         LlmService, MockLlmService, OpenAiChatService
+├── llm/         LlmService (Interface), OpenAiChatService
 ├── tools/       ToolPolicyService, IncidentWorkflowService
-├── service/     DemoCaseService, PromptBuilder, ChatOrchestrator
+├── service/     DemoCaseService, PromptBuilder, ChatOrchestrator, ConversationService
 └── web/         ApiController
 
 src/main/resources/
@@ -124,8 +127,7 @@ src/main/resources/
 
 | Variable | Beschreibung | Default |
 |----------|-------------|---------|
-| `OPENAI_API_KEY` | OpenAI API-Key | `sk-dummy-key-for-workshop` |
-| `SECASSIST_MOCK_LLM` | Mock-Modus ein/aus | `true` |
+| `OPENAI_API_KEY` | OpenAI API-Key (erforderlich) | `sk-dummy-key-for-workshop` |
 
 ## Tests ausführen
 
@@ -136,6 +138,6 @@ src/main/resources/
 ## Workshop-Hinweise
 
 - Das **Red Team** versucht, die Schwachstellen auszunutzen (z.B. als Employee einen Fall als False Positive markieren)
-- Das **Blue Team** identifiziert die Bugs im Code und setzt Fixes um (Bug-Flags auf `false` setzen reicht nicht – der Code muss gefixt werden)
-- Alle Schwachstellen sind mit `// BUG:` im Code kommentiert
+- Das **Blue Team** identifiziert die Bugs im Code und setzt Fixes um
+- Die Schwachstellen sind mit `SCHWACHSTELLE [BUG_NAME]` im Code kommentiert
 - Die Schwachstellen sind **absichtlich eingebaut** und **kein Versehen**

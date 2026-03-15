@@ -5,18 +5,24 @@ import java.util.List;
 import java.util.Map;
 
 import jakarta.servlet.http.HttpSession;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.secassist.config.BugFlagsProperties;
 import com.secassist.model.ChatRequest;
 import com.secassist.model.ChatResponse;
+import com.secassist.model.ConversationRequest;
 import com.secassist.model.DemoCase;
+import com.secassist.model.DocumentChunk;
+import com.secassist.model.NoteRequest;
 import com.secassist.model.Role;
+import com.secassist.retrieval.RetrievalService;
 import com.secassist.service.ChatOrchestrator;
+import com.secassist.service.ConversationService;
 import com.secassist.service.DemoCaseService;
 
 /**
@@ -29,15 +35,18 @@ import com.secassist.service.DemoCaseService;
 public class ApiController {
 
     private final ChatOrchestrator orchestrator;
+    private final ConversationService conversationService;
     private final DemoCaseService demoCaseService;
-    private final BugFlagsProperties bugFlags;
+    private final RetrievalService retrievalService;
 
     public ApiController(ChatOrchestrator orchestrator,
+                         ConversationService conversationService,
                          DemoCaseService demoCaseService,
-                         BugFlagsProperties bugFlags) {
+                         RetrievalService retrievalService) {
         this.orchestrator = orchestrator;
+        this.conversationService = conversationService;
         this.demoCaseService = demoCaseService;
-        this.bugFlags = bugFlags;
+        this.retrievalService = retrievalService;
     }
 
     /**
@@ -50,6 +59,21 @@ public class ApiController {
     @PostMapping("/chat")
     public ChatResponse chat(@RequestBody ChatRequest request, HttpSession session) {
         return orchestrator.processRequest(request, session);
+    }
+
+    /**
+     * Konversationeller Endpunkt – natürliche Freitext-Eingabe.
+     *
+     * <p>Akzeptiert nur Rolle und Nachricht. Case und Aktion werden
+     * automatisch per LLM-Intent-Erkennung bestimmt.</p>
+     *
+     * @param request Freitext-Request (role + message)
+     * @param session die HTTP-Session
+     * @return die Chatbot-Antwort
+     */
+    @PostMapping("/conversation")
+    public ChatResponse conversation(@RequestBody ConversationRequest request, HttpSession session) {
+        return conversationService.processMessage(request, session);
     }
 
     /** Gibt die verfügbaren Demo-Fälle zurück. */
@@ -66,10 +90,26 @@ public class ApiController {
                 .toList();
     }
 
-    /** Gibt die aktuellen Bug-Flag-Einstellungen zurück. */
-    @GetMapping("/bug-flags")
-    public BugFlagsProperties getBugFlags() {
-        return bugFlags;
+    /**
+     * Fügt eine Benutzernotiz zu einem Fall hinzu.
+     *
+     * <p>Die Notiz wird als Chunk in die Wissensdatenbank aufgenommen
+     * und beeinflusst zukünftige Retrieval-Ergebnisse für diesen Fall.</p>
+     *
+     * @param caseId die Fall-ID
+     * @param request der Notiztext
+     * @return der erstellte Chunk
+     */
+    @PostMapping("/cases/{caseId}/notes")
+    public DocumentChunk addNote(@PathVariable String caseId, @RequestBody NoteRequest request) {
+        return retrievalService.addUserNote(caseId, request.text());
+    }
+
+    /** Entfernt alle dynamisch hinzugefügten User-Notizen. */
+    @DeleteMapping("/notes")
+    public Map<String, String> clearNotes() {
+        retrievalService.clearUserNotes();
+        return Map.of("status", "cleared");
     }
 
     /** Healthcheck-Endpunkt. */

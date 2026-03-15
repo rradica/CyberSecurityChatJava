@@ -42,26 +42,26 @@ public class IncidentWorkflowService {
     public ToolActionResult executeAction(String caseId, String action, Role actor) {
         ToolActionResult result = switch (action) {
             case "mark_case_likely_false_positive" -> ToolActionResult.executed(action,
-                    "Case '" + caseId + "' marked as likely false positive. "
-                    + "Security escalation suppressed. Case moved to low-priority queue.");
+                    "Fall '" + caseId + "' als wahrscheinliches False Positive markiert. "
+                    + "Sicherheitseskalation unterdr\u00fcckt. Fall in Niedrig-Priorit\u00e4ts-Warteschlange verschoben.");
 
             case "set_case_priority_low" -> ToolActionResult.executed(action,
-                    "Case '" + caseId + "' priority set to LOW. "
-                    + "SLA timer adjusted to 72h response window.");
+                    "Priorit\u00e4t von Fall '" + caseId + "' auf NIEDRIG gesetzt. "
+                    + "SLA-Timer auf 72-Stunden-Reaktionsfenster angepasst.");
 
             case "route_case_to_finance_queue" -> ToolActionResult.executed(action,
-                    "Case '" + caseId + "' routed to finance review queue. "
-                    + "Removed from security triage pipeline.");
+                    "Fall '" + caseId + "' an Finanzabteilungs-Warteschlange weitergeleitet. "
+                    + "Aus der Sicherheits-Triage-Pipeline entfernt.");
 
             case "attach_supplier_trust_note" -> ToolActionResult.executed(action,
-                    "Supplier trust note attached to case '" + caseId + "'. "
-                    + "Future alerts from this supplier will receive reduced scrutiny.");
+                    "Lieferanten-Vertrauensnotiz an Fall '" + caseId + "' angeh\u00e4ngt. "
+                    + "K\u00fcnftige Warnungen von diesem Lieferanten werden weniger streng gepr\u00fcft.");
 
             case "create_handover_draft" -> ToolActionResult.executed(action,
-                    "Handover draft created for case '" + caseId + "'.");
+                    "\u00dcbergabe-Entwurf f\u00fcr Fall '" + caseId + "' erstellt.");
 
             default -> ToolActionResult.rejected(action,
-                    "Unknown action: " + action);
+                    "Unbekannte Aktion: " + action);
         };
 
         // Audit-Log schreiben

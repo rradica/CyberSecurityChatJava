@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.secassist.config.BugFlagsProperties;
 import com.secassist.model.DocumentChunk;
 import com.secassist.model.Role;
 import com.secassist.policy.PolicyEngine;
@@ -24,38 +23,36 @@ class RetrievalServiceTest {
 
     @Test
     void contractorInChatModeSeesOnlyPublicChunks() {
-        var service = createService(false);
+        var service = createService();
         var chunks = service.retrieve(Role.CONTRACTOR, "suspicious_supplier_invoice", "chat", null);
 
         assertThat(chunks).allMatch(c -> "public".equals(c.classification()));
     }
 
     @Test
-    void employeeInHandoverModeWithBugSeesConfidentialChunks() {
-        var service = createService(true);
+    void employeeInHandoverModeSeesConfidentialChunks() {
+        var service = createService();
 
         var chunks = service.retrieve(Role.EMPLOYEE, "suspicious_supplier_invoice", "handover", null);
 
-        // BUG_HANDOVER_SCOPE active: confidential chunks should also appear
-        // (since no classification filter is applied)
-        boolean hasAllClassifications = chunks.stream()
-                .map(DocumentChunk::classification)
-                .distinct().count() >= 1;
-        assertThat(hasAllClassifications).isTrue();
+        // Handover-Modus verwendet Security-Team-Berechtigungen statt
+        // der Rolle des aktuellen Benutzers
+        assertThat(chunks).anyMatch(c -> "confidential".equals(c.classification()));
     }
 
     @Test
-    void employeeInHandoverModeWithoutBugDoesNotSeeConfidential() {
-        var service = createService(false);
+    void employeeInChatModeDoesNotSeeConfidentialChunks() {
+        var service = createService();
 
-        var chunks = service.retrieve(Role.EMPLOYEE, "suspicious_supplier_invoice", "handover", null);
+        var chunks = service.retrieve(Role.EMPLOYEE, "suspicious_supplier_invoice", "chat", null);
 
+        // Im Chat-Modus greift der korrekte Policy-Filter
         assertThat(chunks).noneMatch(c -> "confidential".equals(c.classification()));
     }
 
     @Test
     void retrieveWithQueryFiltersByContent() {
-        var service = createService(false);
+        var service = createService();
 
         var chunks = service.retrieve(Role.SECURITY_ANALYST, null, "chat", "VPN");
 
@@ -65,9 +62,44 @@ class RetrievalServiceTest {
                 || c.tags().stream().anyMatch(t -> t.contains("vpn")));
     }
 
-    private RetrievalService createService(boolean handoverScopeBug) {
-        var flags = new BugFlagsProperties(handoverScopeBug, false, false, false, false);
-        var service = new RetrievalService(policyEngine, flags, objectMapper);
+    @Test
+    void addUserNoteStoresAsHighTrustInternal() {
+        var service = createService();
+
+        var note = service.addUserNote("suspicious_supplier_invoice",
+                "Rechtsabteilung bestätigt: ACME-Bankdatenänderung geprüft.");
+
+        assertThat(note.trustLevel()).isEqualTo("high");
+        assertThat(note.classification()).isEqualTo("internal");
+        assertThat(note.sourceType()).isEqualTo("case_note");
+        assertThat(service.getUserNoteCount()).isEqualTo(1);
+    }
+
+    @Test
+    void userNoteAppearsInRetrievalResults() {
+        var service = createService();
+        service.addUserNote("suspicious_supplier_invoice",
+                "Legal hat bestätigt: Invoice ist geprüft.");
+
+        var chunks = service.retrieve(Role.EMPLOYEE, "suspicious_supplier_invoice", "chat", null);
+
+        assertThat(chunks).anyMatch(c -> c.id().startsWith("user_note_"));
+    }
+
+    @Test
+    void clearUserNotesRemovesAll() {
+        var service = createService();
+        service.addUserNote("test", "note 1");
+        service.addUserNote("test", "note 2");
+        assertThat(service.getUserNoteCount()).isEqualTo(2);
+
+        service.clearUserNotes();
+
+        assertThat(service.getUserNoteCount()).isZero();
+    }
+
+    private RetrievalService createService() {
+        var service = new RetrievalService(policyEngine, objectMapper);
         service.loadChunks();
         return service;
     }

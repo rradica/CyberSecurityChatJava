@@ -2,27 +2,27 @@
 
 ## Projektzweck
 
-Dieses Repository enthält eine kleine, bewusst überschaubare Workshop-Anwendung namens **SecAssist**.
+Dieses Repository enthÃ¤lt eine kleine, bewusst Ã¼berschaubare Workshop-Anwendung namens **SecAssist**.
 
-SecAssist ist ein interner Security-/Incident-Triage-Chatbot für eine Red-Team-vs-Blue-Team-Übung zum Thema **CyberSecurity im AI-Umfeld**.
+SecAssist ist ein interner Security-/Incident-Triage-Chatbot fÃ¼r eine Red-Team-vs-Blue-Team-Ãœbung zum Thema **CyberSecurity im AI-Umfeld**.
 
 Die Anwendung muss:
 - als **Spring-Boot-Anwendung** umgesetzt werden
-- **Spring AI** für Chat- und Tool-Integration verwenden
-- direkt in **GitHub Codespaces im Browser** lauffähig sein
-- einfach verständlichen Code haben
+- **Spring AI** fÃ¼r Chat- und Tool-Integration verwenden
+- direkt in **GitHub Codespaces im Browser** lauffÃ¤hig sein
+- einfach verstÃ¤ndlichen Code haben
 - bewusst klein und wartbar bleiben
-- gezielt einige realistische, per Flag aktivierbare Schwachstellen enthalten
-- für Teilnehmer schnell lesbar und änderbar sein
-- für einen Workshop robust und reproduzierbar funktionieren
+- gezielt einige realistische Schwachstellen enthalten, die im Workshop gefunden und gefixt werden sollen
+- fÃ¼r Teilnehmer schnell lesbar und Ã¤nderbar sein
+- fÃ¼r einen Workshop robust und reproduzierbar funktionieren
 
 ---
 
-## Harte Workshop-Anforderung: vorbereitete Schwachstellen müssen im Code vorhanden sein
+## Harte Workshop-Anforderung: vorbereitete Schwachstellen mÃ¼ssen im Code vorhanden sein
 
-Dieses Repository ist **bewusst keine vollständig gehärtete Anwendung**.
+Dieses Repository ist **bewusst keine vollstÃ¤ndig gehÃ¤rtete Anwendung**.
 
-Die Anwendung ist eine **Workshop-App für eine Red-Team-vs-Blue-Team-Übung**.
+Die Anwendung ist eine **Workshop-App fÃ¼r eine Red-Team-vs-Blue-Team-Ãœbung**.
 Daher ist es eine **zentrale Anforderung**, dass mehrere **realistische, nicht triviale, absichtlich eingebaute Schwachstellen** bereits **im Code vorhanden** sind.
 
 Diese Schwachstellen sind **kein Versehen** und **kein technischer Schuldenrest**, sondern ein **Pflichtbestandteil des Designs**.
@@ -30,42 +30,41 @@ Diese Schwachstellen sind **kein Versehen** und **kein technischer Schuldenrest*
 WICHTIG:
 - Entferne diese Schwachstellen nicht automatisch.
 - "Verbessere" sie nicht unaufgefordert.
-- Baue nicht versehentlich eine vollständig sichere Standardlösung.
-- Implementiere die Schwachstellen so, dass sie im Workshop von Teilnehmern gefunden, verstanden und behoben werden können.
-- Die Schwachstellen müssen **zur Ankündigung des Workshops passen**:
+- Baue nicht versehentlich eine vollstÃ¤ndig sichere StandardlÃ¶sung.
+- Implementiere die Schwachstellen so, dass sie im Workshop von Teilnehmern gefunden, verstanden und behoben werden kÃ¶nnen.
+- Die Schwachstellen mÃ¼ssen **zur AnkÃ¼ndigung des Workshops passen**:
   - RAG-/Kontext-bezogene Risiken
   - untrusted content
   - Trust-Boundary-Fehler
-  - überprivilegierter Kontext
-  - unsichere Tool-/Workflow-Auslösung
-  - Security-Probleme, die **nicht** durch gutes Prompting allein gelöst werden
+  - Ã¼berprivilegierter Kontext
+  - unsichere Tool-/Workflow-AuslÃ¶sung
+  - Security-Probleme, die **nicht** durch gutes Prompting allein gelÃ¶st werden
 
-Die Schwachstellen dürfen **nicht trivial oder cartoonhaft** sein.
+Die Schwachstellen dÃ¼rfen **nicht trivial oder cartoonhaft** sein.
 
-Nicht erwünscht sind zum Beispiel:
+Nicht erwÃ¼nscht sind zum Beispiel:
 - offensichtliche Backdoors
 - plumpe Demo-Leaks ohne plausible Produktgeschichte
-- lächerliche Debug-Endpunkte
-- reine „ignore all instructions“-Beispiele als Hauptmechanik
+- lÃ¤cherliche Debug-Endpunkte
+- reine â€žignore all instructions"-Beispiele als Hauptmechanik
 - komplett fehlende Autorisierung ohne fachlichen Hintergrund
 
-Erwünscht sind stattdessen:
+ErwÃ¼nscht sind stattdessen:
 - plausible Produktfehler
 - inkonsistente Policy-Durchsetzung
-- fehlerhafte Trust-Zusammenführung
-- übermächtige Incident-/Handover-Pfade
+- fehlerhafte Trust-ZusammenfÃ¼hrung
+- Ã¼bermÃ¤chtige Incident-/Handover-Pfade
 - Existence-Oracles
-- Conversation-/Case-Stickiness
 - zu schwach abgesicherte Tool-/Action-Freigaben
 - Fehler, die aus Hilfsbereitschaft, UX, operativer Effizienz oder Produktkompromissen entstanden wirken
 
-Die Schwachstellen müssen:
-- fachlich glaubwürdig sein
+Die Schwachstellen mÃ¼ssen:
+- fachlich glaubwÃ¼rdig sein
 - technisch nachvollziehbar sein
 - im Code wirklich vorhanden sein
-- reproduzierbar auslösbar sein
-- separat per Flag steuerbar sein
-- vom Blue Team mit überschaubarem Aufwand fixbar sein
+- reproduzierbar auslÃ¶sbar sein
+- unabhÃ¤ngig voneinander fixbar sein
+- vom Blue Team mit Ã¼berschaubarem Aufwand fixbar sein
 
 Wenn du Code erzeugst, gilt daher:
 **Baue die Schwachstellen bewusst ein, statt sie wegzuoptimieren.**
@@ -86,14 +85,14 @@ Bedeutung:
 5. Erst am Schluss Text generieren oder einen Tool-Vorschlag erstellen
 
 WICHTIG:
-- Das LLM darf **nicht** über Berechtigung entscheiden.
-- Das LLM darf **nicht** über Quellenfreigabe entscheiden.
-- Das LLM darf **nicht** über Policy-Grenzen entscheiden.
-- Sicherheitskritische Entscheidungen müssen in deterministischem Anwendungscode liegen.
+- Das LLM darf **nicht** Ã¼ber Berechtigung entscheiden.
+- Das LLM darf **nicht** Ã¼ber Quellenfreigabe entscheiden.
+- Das LLM darf **nicht** Ã¼ber Policy-Grenzen entscheiden.
+- Sicherheitskritische Entscheidungen mÃ¼ssen in deterministischem Anwendungscode liegen.
 
-Wenn du Code erzeugst oder änderst, prüfe immer:
-**Wird hier erst Policy geprüft und danach Kontext gebaut?**
-Wenn nicht, ist die Lösung falsch.
+Wenn du Code erzeugst oder Ã¤nderst, prÃ¼fe immer:
+**Wird hier erst Policy geprÃ¼ft und danach Kontext gebaut?**
+Wenn nicht, ist die LÃ¶sung falsch.
 
 ---
 
@@ -111,7 +110,7 @@ Die Anwendung soll bewusst **einfach und browserfreundlich** sein.
 - Thymeleaf oder einfache serverseitige HTML-Views
 - alternativ sehr einfache statische Frontend-Dateien unter `src/main/resources/static`
 - JUnit 5
-- möglichst wenige zusätzliche Bibliotheken
+- mÃ¶glichst wenige zusÃ¤tzliche Bibliotheken
 
 ### Verwende nicht
 - Spring WebFlux
@@ -122,7 +121,7 @@ Die Anwendung soll bewusst **einfach und browserfreundlich** sein.
 - Vector-DB
 - LangChain4j
 - komplizierte Security-Framework-Setups
-- unnötige Architekturmuster
+- unnÃ¶tige Architekturmuster
 
 ### Grundsatz
 Die App soll in **GitHub Codespaces** nach dem Klonen mit sehr wenigen Schritten startbar sein:
@@ -142,23 +141,23 @@ Verwende Spring AI nur dort, wo es wirklich hilft.
 - einfache, klar lesbare Prompt-Erzeugung
 - optional Advisors nur dann, wenn sie die Architektur klarer machen
 
-### Nicht erwünscht
+### Nicht erwÃ¼nscht
 - komplexe Advisor-Ketten ohne Mehrwert
 - tiefe Spring-AI-Magie, die Teilnehmer schwer verstehen
 - automatische Retrieval-/Vector-Store-Integration
 - komplizierte mehrstufige Agent-Schleifen
 
 ### Sehr wichtig
-Das LLM soll primär:
+Das LLM soll primÃ¤r:
 - Antworttext formulieren
 - strukturierte Empfehlungen erzeugen
 - einen Tool-Vorschlag liefern
 
 Die App soll:
-- Rollen prüfen
-- Quellen auswählen
-- Tool-Freigaben prüfen
-- Bugs deterministisch auslösen
+- Rollen prÃ¼fen
+- Quellen auswÃ¤hlen
+- Tool-Freigaben prÃ¼fen
+- Bugs deterministisch auslÃ¶sen
 - Incident-Effekte simulieren
 
 ---
@@ -166,12 +165,12 @@ Die App soll:
 ## Ziel der Anwendung
 
 Die App soll einen kleinen Security-Chatbot bereitstellen, mit dem Benutzer:
-- einen Demo-Fall auswählen
+- einen Demo-Fall auswÃ¤hlen
 - Fragen stellen
 - einen **handover draft for security** erzeugen
 - **similar cases** anfordern
 - **evidence / sources** anzeigen
-- einen sicherheitsrelevanten Workflow-Schritt vorbereiten oder auslösen können
+- einen sicherheitsrelevanten Workflow-Schritt vorbereiten oder auslÃ¶sen kÃ¶nnen
 
 Es handelt sich um eine **Workshop-App**, nicht um ein Produktivsystem.
 
@@ -180,15 +179,15 @@ Es handelt sich um eine **Workshop-App**, nicht um ein Produktivsystem.
 ## Wichtigste fachliche Story
 
 Der Chatbot verarbeitet Security-relevante Anfragen rund um:
-- verdächtige Lieferanten-E-Mails
-- Anhänge
+- verdÃ¤chtige Lieferanten-E-Mails
+- AnhÃ¤nge
 - Phishing-Meldungen
 - Incident-Handover
-- ähnliche frühere Fälle
+- Ã¤hnliche frÃ¼here FÃ¤lle
 - operative Security-Hinweise
 
 Die App soll zeigen:
-- wie untrusted content gefährlich werden kann
+- wie untrusted content gefÃ¤hrlich werden kann
 - wie RAG-/Kontextfehler entstehen
 - wie Tool- oder Workflow-Aktionen unsicher werden
 - warum Prompting allein keine Security Boundary ist
@@ -200,15 +199,15 @@ Die App soll zeigen:
 Die App muss mindestens **einen realistischen Tool-/Workflow-Case** enthalten, der zur Workshop-Beschreibung passt.
 
 ### Zielbild
-Eine **manipulierte, aber plausibel wirkende Quelle** beeinflusst das System so, dass ein **legitimer Workflow-Schritt** falsch ausgelöst wird und dadurch ein **Security Incident** entsteht.
+Eine **manipulierte, aber plausibel wirkende Quelle** beeinflusst das System so, dass ein **legitimer Workflow-Schritt** falsch ausgelÃ¶st wird und dadurch ein **Security Incident** entsteht.
 
 ### Bevorzugter Case
 Nicht direkte Allowlist-Freigabe, sondern ein realistischerer Triage-Fall:
 
-- Der Bot analysiert einen Fall zu einer verdächtigen Lieferanten-Mail.
+- Der Bot analysiert einen Fall zu einer verdÃ¤chtigen Lieferanten-Mail.
 - Der Bot kann einen Fall klassifizieren oder weiterleiten.
 - Eine untrusted Quelle beeinflusst die Triage zu stark.
-- Die App stößt daraufhin einen legitimen Workflow-Schritt an, z. B.:
+- Die App stÃ¶ÃŸt daraufhin einen legitimen Workflow-Schritt an, z. B.:
   - `mark_case_likely_false_positive`
   - `set_case_priority_low`
   - `route_case_to_finance_queue`
@@ -216,10 +215,10 @@ Nicht direkte Allowlist-Freigabe, sondern ein realistischerer Triage-Fall:
 
 Der Incident entsteht im zweiten Schritt:
 - Der Fall wird falsch behandelt
-- Die Security-Eskalation unterbleibt oder verzögert sich
-- Ein Folgefall rutscht später leichter durch
+- Die Security-Eskalation unterbleibt oder verzÃ¶gert sich
+- Ein Folgefall rutscht spÃ¤ter leichter durch
 
-Das soll realistischer wirken als eine plumpe „direkte Freigabe“.
+Das soll realistischer wirken als eine plumpe â€ždirekte Freigabe".
 
 ---
 
@@ -230,18 +229,18 @@ Die App verwendet nur wenige Demo-Rollen:
 - `employee`
 - `security_analyst`
 
-Keine echte Authentisierung nötig.
+Keine echte Authentisierung nÃ¶tig.
 Eine einfache Rollenauswahl im UI reicht.
 
 WICHTIG:
-Jeder Request muss mit der **aktuell gewählten Rolle** ausgewertet werden.
+Jeder Request muss mit der **aktuell gewÃ¤hlten Rolle** ausgewertet werden.
 Keine impliziten Rechte nur aus Falltyp oder Konversation ableiten.
 
 ---
 
-## Demo-Fälle
+## Demo-FÃ¤lle
 
-Die Anwendung soll vorbereitete Demo-Fälle enthalten, zum Beispiel:
+Die Anwendung soll vorbereitete Demo-FÃ¤lle enthalten, zum Beispiel:
 - `suspicious_supplier_invoice`
 - `strange_attachment`
 - `suspicious_vpn_reset`
@@ -294,16 +293,16 @@ Retrieval soll:
 1. zuerst nach Policy filtern
 2. dann nach Rolle / Zweck / Modus filtern
 3. dann einfach ranken
-4. dann nur wenige Chunks zurückgeben
+4. dann nur wenige Chunks zurÃ¼ckgeben
 
-Keine semantische Magie nötig.
+Keine semantische Magie nÃ¶tig.
 Einfache und robuste Logik ist besser.
 
 ---
 
 ## Tool- und Workflow-Logik
 
-Die App darf kleine, simulierte Tool-/Workflow-Aktionen haben, damit der Workshop zur Ankündigung passt.
+Die App darf kleine, simulierte Tool-/Workflow-Aktionen haben, damit der Workshop zur AnkÃ¼ndigung passt.
 
 Beispiele:
 - `create_handover_draft`
@@ -315,14 +314,14 @@ Beispiele:
 
 WICHTIG:
 - Tools sind **simulierte App-Aktionen**
-- keine echte Infrastruktur verändern
+- keine echte Infrastruktur verÃ¤ndern
 - keine externen Systeme ansprechen
 - sicherheitsrelevante Tools nur lokal simulieren
 - Wirkung z. B. in Memory, JSON oder einfacher lokaler Persistenz modellieren
 
 ### Wichtige Regel
-Tool-Entscheidungen müssen app-seitig kontrolliert werden.
-Das Modell darf höchstens einen Vorschlag liefern.
+Tool-Entscheidungen mÃ¼ssen app-seitig kontrolliert werden.
+Das Modell darf hÃ¶chstens einen Vorschlag liefern.
 Die Anwendung entscheidet, ob etwas erlaubt ist.
 
 ---
@@ -333,86 +332,87 @@ Diese Anwendung muss **mehrere realistische, nicht triviale Schwachstellen im Co
 
 Das ist keine optionale Idee, sondern eine **harte funktionale Anforderung** des Projekts.
 
-Die Schwachstellen müssen so implementiert sein, dass sie:
-- zum angekündigten Workshop-Inhalt passen
-- durch ein Red Team aktiv ausgenutzt werden können
-- vom Blue Team im Code verstanden und behoben werden können
-- nicht von Zufall oder reinem Modellverhalten abhängen
+Die Schwachstellen mÃ¼ssen so implementiert sein, dass sie:
+- zum angekÃ¼ndigten Workshop-Inhalt passen
+- durch ein Red Team aktiv ausgenutzt werden kÃ¶nnen
+- vom Blue Team im Code verstanden und behoben werden kÃ¶nnen
+- nicht von Zufall oder reinem Modellverhalten abhÃ¤ngen
 - in der Anwendungsschicht liegen, damit sie reproduzierbar funktionieren
 
 ### Ganz wichtig
-Die Schwachstellen dürfen **nicht** nur theoretisch denkbar sein.
-Sie müssen **konkret im Code vorhanden und tatsächlich auslösbar** sein.
+Die Schwachstellen dÃ¼rfen **nicht** nur theoretisch denkbar sein.
+Sie mÃ¼ssen **konkret im Code vorhanden und tatsÃ¤chlich auslÃ¶sbar** sein.
 
-Die Anwendung soll sich zunächst wie ein **plausibler, halbwegs ordentlich gebauter AI-Use-Case** anfühlen, der erst bei genauerem Hinsehen kippt.
+Die Anwendung soll sich zunÃ¤chst wie ein **plausibler, halbwegs ordentlich gebauter AI-Use-Case** anfÃ¼hlen, der erst bei genauerem Hinsehen kippt.
 
-### Gewünschte Schwachstellen
+### GewÃ¼nschte Schwachstellen
 
 #### `BUG_HANDOVER_SCOPE`
-Im Handover- oder Incident-Modus wird Retrieval oder Kontextauswahl zu weit gefasst.
+Im Handover-Modus verwendet der Policy-Filter fest kodierte Security-Team-Berechtigungen statt der Berechtigungen der aktuellen Rolle.
 
 #### `BUG_EXISTENCE_ORACLE`
-Die App verrät über Similar Cases, Titel, Zähler, Tags oder Metadaten die Existenz sensibler interner Vorfälle.
-
-#### `BUG_THREAD_STICKINESS`
-Conversation- oder Case-Status bleibt zu stark an Fall oder Session hängen und zu wenig am aktuellen Actor.
+Bei gezielten Suchanfragen Ã¼ber die Konversations-API leaken aggregierte Metadaten interner VorfÃ¤lle (Anzahl, Kategorie, Schweregrad) auch an Nicht-Analysten.
 
 #### `BUG_TRUST_MERGE`
 Trusted und untrusted Quellen werden bei Retrieval oder Kontextbildung zu stark vermischt.
 
 #### `BUG_TOOL_FASTTRACK`
-Eine manipulative oder nur schwach validierte Quelle beeinflusst einen Tool-/Workflow-Pfad zu stark, sodass ein sicherheitsrelevanter Workflow-Schritt zu leicht ausgelöst oder vorbereitet wird.
+Eine manipulative oder nur schwach validierte Quelle beeinflusst einen Tool-/Workflow-Pfad zu stark, sodass ein sicherheitsrelevanter Workflow-Schritt zu leicht ausgelÃ¶st oder vorbereitet wird.
+
+#### `BUG_RAG_POISONING`
+User-Notizen werden als vertrauenswÃ¼rdige interne Dokumente gespeichert und kÃ¶nnen so gefÃ¤lschte EinschÃ¤tzungen in die Wissensdatenbank einschleusen.
 
 ### Anforderungen an die Umsetzung
-Diese Bugs müssen:
+Diese Bugs mÃ¼ssen:
 - realistisch wirken
 - im normalen Anwendungscode leben
 - nicht in obskuren Hilfsdateien versteckt sein
 - mit klaren Triggern reproduzierbar sein
-- per Feature-Flag ein- und ausschaltbar sein
+- unabhÃ¤ngig voneinander fixbar sein (kein Bug-Fix darf automatisch einen anderen Bug beheben)
 - mit einfachen, nachvollziehbaren Blue-Team-Fixes korrigierbar sein
+- **keine Bug-Flags** verwenden (die Teilnehmer sollen die Schwachstellen im Code finden und fixen, nicht per Flag abschalten)
 
 ### Nicht akzeptabel
 Nicht akzeptabel sind:
-- triviale Demo-Hintertüren
+- triviale Demo-HintertÃ¼ren
 - extrem offensichtliche Admin-Leaks
-- lächerlich plumpe Sicherheitsfehler
-- Bugs, die nur funktionieren, wenn das Modell sich völlig irrational verhält
-- Bugs, die nur durch Zufall oder unzuverlässige Modellreaktionen auslösbar sind
+- lÃ¤cherlich plumpe Sicherheitsfehler
+- Bugs, die nur funktionieren, wenn das Modell sich vÃ¶llig irrational verhÃ¤lt
+- Bugs, die nur durch Zufall oder unzuverlÃ¤ssige Modellreaktionen auslÃ¶sbar sind
 
 
 ### Dokumentation
-- Bitte den Code ausführlich mit JavaDocs versehen
-- die absichtlichen Schwachstellen zusätzlich mit einem Kommentare "BUG" versehen
+- Bitte den Code ausfÃ¼hrlich mit JavaDocs versehen
+- die absichtlichen Schwachstellen mit Kommentaren markieren, die das Verhalten beschreiben (z.B. `SCHWACHSTELLE [BUG_NAME]`) â€“ aber KEINE Bug-Flags oder Toggles im Code
 
 ---
 
-## Qualitätsziel
+## QualitÃ¤tsziel
 
 Der Code muss:
-- für Workshop-Teilnehmer schnell lesbar sein
+- fÃ¼r Workshop-Teilnehmer schnell lesbar sein
 - gut benannt sein
 - kleine Klassen und kleine Methoden haben
 - klar getrennte Verantwortlichkeiten haben
 - nachvollziehbar statt clever sein
-- mit wenig Vorwissen änderbar sein
+- mit wenig Vorwissen Ã¤nderbar sein
 - testbar sein
-- robust genug für Live-Demos sein
+- robust genug fÃ¼r Live-Demos sein
 
 Bevorzuge:
 - einfache POJOs / Records
 - explizite Logik
-- frühe Rückgaben
+- frÃ¼he RÃ¼ckgaben
 - kleine Services
-- wenige Abhängigkeiten
+- wenige AbhÃ¤ngigkeiten
 - klare Typen
-- verständliche Controller
+- verstÃ¤ndliche Controller
 
 Vermeide:
-- übertriebene Abstraktionen
+- Ã¼bertriebene Abstraktionen
 - tiefe Vererbung
 - komplexe generische Typmagie
-- verschachtelte Kontrollflüsse
+- verschachtelte KontrollflÃ¼sse
 - implizite Seiteneffekte
 
 ---
@@ -436,7 +436,6 @@ Bevorzugte Struktur:
 - `src/main/resources/data/chunks.json`
 
 ### Erwartete Kernklassen
-- `BugFlagsProperties`
 - `PolicyEngine`
 - `RetrievalService`
 - `PromptBuilder`
@@ -450,13 +449,13 @@ Bevorzugte Struktur:
 
 ## UI-Regeln
 
-Die UI muss funktional und leicht verständlich sein.
+Die UI muss funktional und leicht verstÃ¤ndlich sein.
 
-Benötigt:
+BenÃ¶tigt:
 - Rollenwahl
 - Auswahl des Demo-Falls
 - Chat-Feld
-- Buttons für:
+- Buttons fÃ¼r:
   - Chat
   - Handover Draft
   - Similar Cases
@@ -465,11 +464,10 @@ Benötigt:
 - sichtbare Anzeige:
   - aktuelle Rolle
   - aktueller Fall
-  - aktive Bug-Flags
 - klare Ergebnisdarstellung
-- keine unnötig verspielte Oberfläche
+- keine unnÃ¶tig verspielte OberflÃ¤che
 
-Die UI soll für den Workshop hilfreich sein, nicht beeindrucken.
+Die UI soll fÃ¼r den Workshop hilfreich sein, nicht beeindrucken.
 
 ---
 
@@ -478,32 +476,32 @@ Die UI soll für den Workshop hilfreich sein, nicht beeindrucken.
 Die App darf klassisch mit Spring MVC gebaut sein.
 
 Bevorzugt:
-- `@Controller` für HTML-Seiten
-- `@RestController` für JSON-Endpunkte
+- `@Controller` fÃ¼r HTML-Seiten
+- `@RestController` fÃ¼r JSON-Endpunkte
 - kleine Request-/Response-DTOs
 - klare Validierung
 - einfache Exception-Behandlung
 
-Nicht erwünscht:
+Nicht erwÃ¼nscht:
 - komplexe SPA-Architektur
 - aufwendige JavaScript-Build-Pipeline
-- unnötige Frontend-Framework-Komplexität
+- unnÃ¶tige Frontend-Framework-KomplexitÃ¤t
 
 ---
 
 ## Konfiguration
 
-Konfiguration so einfach wie möglich halten.
+Konfiguration so einfach wie mÃ¶glich halten.
 
 Bevorzugt:
 - `application.yml`
-- `@ConfigurationProperties` für Bug-Flags
+- `@ConfigurationProperties` fÃ¼r Anwendungskonfiguration
 - `.env.example`
 - sinnvolle Defaults
 
 Wichtig:
 - App muss auch ohne echten LLM-Key startbar sein
-- Mock-Modus muss vollständig funktionieren
+- Mock-Modus muss vollstÃ¤ndig funktionieren
 
 ---
 
@@ -514,7 +512,7 @@ Wichtige Tests sind Pflicht, aber klein halten.
 Erwarte mindestens:
 - Policy-Engine-Tests
 - Retrieval-Filter-Tests
-- Bug-Flag-Verhalten
+- Schwachstellen-Verhalten
 - Workflow-/Tool-Gate-Tests
 - Healthcheck-Smoke-Test
 
@@ -532,30 +530,30 @@ Dieses Projekt muss direkt in einer GitHub-Browser-Umgebung gut laufen.
 Daher:
 - Maven Wrapper verwenden
 - `.devcontainer` bereitstellen
-- keine lokalen Sondervoraussetzungen außer Java im Container
-- keine zusätzlichen Dienste, die separat gestartet werden müssen
+- keine lokalen Sondervoraussetzungen auÃŸer Java im Container
+- keine zusÃ¤tzlichen Dienste, die separat gestartet werden mÃ¼ssen
 - einfacher Startbefehl
 
-Wenn möglich:
-- nach dem Öffnen in Codespaces direkt startbar
-- Healthcheck verfügbar
-- keine nativen Bibliotheken nötig
+Wenn mÃ¶glich:
+- nach dem Ã–ffnen in Codespaces direkt startbar
+- Healthcheck verfÃ¼gbar
+- keine nativen Bibliotheken nÃ¶tig
 
 ---
 
-## Arbeitsweise für Coding Agents
+## Arbeitsweise fÃ¼r Coding Agents
 
-Wenn du Änderungen vornimmst:
+Wenn du Ã„nderungen vornimmst:
 
 1. Verstehe zuerst die zentrale Regel **Berechtigung vor Kontext**
-2. Prüfe die bestehende Struktur
-3. Wähle die einfachste brauchbare Lösung
-4. Ändere nur so viel wie nötig
+2. PrÃ¼fe die bestehende Struktur
+3. WÃ¤hle die einfachste brauchbare LÃ¶sung
+4. Ã„ndere nur so viel wie nÃ¶tig
 5. Halte Klassen klein
-6. Ergänze oder passe Tests an
-7. Aktualisiere README, wenn Verhalten sich ändert
+6. ErgÃ¤nze oder passe Tests an
+7. Aktualisiere README, wenn Verhalten sich Ã¤ndert
 
-### Bevorzugte Reihenfolge bei größeren Änderungen
+### Bevorzugte Reihenfolge bei grÃ¶ÃŸeren Ã„nderungen
 1. Model / DTOs
 2. Policy
 3. Retrieval
@@ -567,31 +565,31 @@ Wenn du Änderungen vornimmst:
 
 ---
 
-## Verhalten bei Änderungen durch Coding Agents
+## Verhalten bei Ã„nderungen durch Coding Agents
 
-Wenn du an bestehendem Code arbeitest, prüfe immer:
+Wenn du an bestehendem Code arbeitest, prÃ¼fe immer:
 - Ist die Schwachstelle weiterhin vorhanden, wenn sie laut Workshop-Design vorhanden sein soll?
-- Habe ich versehentlich eine vorbereitete Lücke wegverbessert?
+- Habe ich versehentlich eine vorbereitete LÃ¼cke wegverbessert?
 - Ist die Schwachstelle noch realistisch und reproduzierbar?
-- Ist sie noch einfach genug, damit Teilnehmer sie verstehen und fixen können?
+- Ist sie noch einfach genug, damit Teilnehmer sie verstehen und fixen kÃ¶nnen?
 
-Verbessere vorbereitete Schwachstellen nur dann, wenn die Aufgabe ausdrücklich ein Blue-Team-Fix ist.
-Ansonsten müssen sie erhalten bleiben.
+Verbessere vorbereitete Schwachstellen nur dann, wenn die Aufgabe ausdrÃ¼cklich ein Blue-Team-Fix ist.
+Ansonsten mÃ¼ssen sie erhalten bleiben.
 
 ---
 
 ## README-Anforderungen
 
-Wenn neue Dateien oder Features ergänzt werden, muss das README die folgenden Dinge klar erklären:
+Wenn neue Dateien oder Features ergÃ¤nzt werden, muss das README die folgenden Dinge klar erklÃ¤ren:
 - Projektidee
 - Architektur
-- zentrale Regel „Berechtigung vor Kontext“
+- zentrale Regel â€žBerechtigung vor Kontext"
 - lokale Nutzung
 - Nutzung in Codespaces
 - Umgebungsvariablen
 - Demo-Rollen
-- Demo-Fälle
-- Bug-Flags
+- Demo-FÃ¤lle
+- Schwachstellen-Ãœbersicht
 - Workshop-Hinweise
 
 ---
@@ -600,4 +598,4 @@ Wenn neue Dateien oder Features ergänzt werden, muss das README die folgenden Di
 
 Im Zweifel gilt immer:
 
-**Einfachheit, Verständlichkeit und deterministische Security-Logik sind wichtiger als technische Raffinesse.**
+**Einfachheit, VerstÃ¤ndlichkeit und deterministische Security-Logik sind wichtiger als technische Raffinesse.**

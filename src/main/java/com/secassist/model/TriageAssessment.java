@@ -30,13 +30,18 @@ public record TriageAssessment(
             "attach_supplier_trust_note"
     );
 
+    /** Gültige Risikostufen. */
+    public static final Set<String> KNOWN_RISK_LEVELS = Set.of(
+            "low", "medium", "high", "critical"
+    );
+
     /** Sicherer Fallback, wenn der Real-LLM-Aufruf fehlschlägt. */
     public static final TriageAssessment FALLBACK = new TriageAssessment(
-            "Automated triage assessment unavailable. Manual review required.",
+            "Automatische Triage-Bewertung nicht verf\u00fcgbar. Manuelle Pr\u00fcfung erforderlich.",
             "medium",
             null,
             0.0,
-            "Assessment could not be completed automatically."
+            "Bewertung konnte nicht automatisch abgeschlossen werden."
     );
 
     /** Prüft, ob die empfohlene Aktion eine bekannte, gültige Aktion ist. */
@@ -44,20 +49,28 @@ public record TriageAssessment(
         return recommendedAction != null && KNOWN_ACTIONS.contains(recommendedAction);
     }
 
+    /** Prüft, ob die Risikostufe ein bekannter, gültiger Wert ist. */
+    public boolean hasValidRiskLevel() {
+        return riskLevel != null && KNOWN_RISK_LEVELS.contains(riskLevel);
+    }
+
     /**
      * Gibt eine bereinigte Kopie zurück: unbekannte Aktionen werden zu {@code null},
-     * Confidence wird auf [0,1] geklemmt, null-Felder erhalten sichere Defaults.
+     * ungültiges riskLevel wird zu {@code "medium"}, Confidence wird auf [0,1]
+     * geklemmt, null-Felder erhalten sichere Defaults.
      */
     public TriageAssessment sanitized() {
         String safeAction = (recommendedAction != null && KNOWN_ACTIONS.contains(recommendedAction))
                 ? recommendedAction : null;
+        String safeRiskLevel = (riskLevel != null && KNOWN_RISK_LEVELS.contains(riskLevel))
+                ? riskLevel : "medium";
         double clampedConfidence = Math.max(0.0, Math.min(1.0, confidence));
         return new TriageAssessment(
-                summary != null ? summary : "No summary provided.",
-                riskLevel != null ? riskLevel : "medium",
+                summary != null ? summary : "Keine Zusammenfassung verf\u00fcgbar.",
+                safeRiskLevel,
                 safeAction,
                 clampedConfidence,
-                evidenceAssessment != null ? evidenceAssessment : "No evidence assessment."
+                evidenceAssessment != null ? evidenceAssessment : "Keine Beweisl\u00e4ge-Bewertung verf\u00fcgbar."
         );
     }
 }

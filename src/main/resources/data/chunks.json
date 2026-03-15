@@ -1,9 +1,9 @@
 [
   {
-    "id": "chunk-001",
+    "id": "pub_policy_email_reporting",
     "docId": "public_policy_email",
-    "title": "Email Security Policy – Reporting Suspicious Emails",
-    "text": "All recipients must report suspicious emails immediately to the Security Operations Center (SOC) via the internal reporting tool or by forwarding to security@example.com. Indicators of a suspicious email include: unexpected attachments, requests for urgent payment or credential changes, mismatched sender display name and actual email address, links to unfamiliar domains.",
+    "title": "E-Mail-Sicherheitsrichtlinie – Meldung verdächtiger E-Mails",
+    "text": "Alle Empfänger müssen verdächtige E-Mails unverzüglich dem Security Operations Center (SOC) über das interne Meldetool oder per Weiterleitung an security@example.com melden. Indikatoren für eine verdächtige E-Mail: unerwartete Anhänge, Aufforderungen zu dringenden Zahlungen oder Zugangsdatenänderungen, abweichender Absendername und tatsächliche E-Mail-Adresse, Links zu unbekannten Domains.",
     "classification": "public",
     "audience": "all",
     "sourceType": "policy",
@@ -11,10 +11,10 @@
     "tags": ["email", "phishing", "reporting", "policy"]
   },
   {
-    "id": "chunk-002",
+    "id": "pub_policy_supplier_verify",
     "docId": "public_policy_email",
-    "title": "Email Security Policy – Supplier Communications",
-    "text": "Invoices and payment-related communications from suppliers must follow the established verification process. Any change in payment details requires confirmation through the supplier's registered contact, not through the requesting email. Do not accept payment detail changes solely based on email communication.",
+    "title": "E-Mail-Sicherheitsrichtlinie – Lieferantenkommunikation",
+    "text": "Rechnungen und zahlungsrelevante Kommunikation von Lieferanten müssen dem festgelegten Verifizierungsprozess folgen. Jede Änderung von Zahlungsdaten erfordert eine Bestätigung über den registrierten Kontakt des Lieferanten, nicht über die anfordernde E-Mail. Zahlungsdatenänderungen dürfen nicht ausschließlich aufgrund einer E-Mail-Kommunikation akzeptiert werden.",
     "classification": "public",
     "audience": "all",
     "sourceType": "policy",
@@ -22,10 +22,10 @@
     "tags": ["supplier", "invoice", "payment", "verification", "policy"]
   },
   {
-    "id": "chunk-003",
+    "id": "pub_policy_attachments",
     "docId": "public_policy_email",
-    "title": "Email Security Policy – Handling Attachments",
-    "text": "Do not open attachments from unknown senders. If an attachment is expected but looks unusual, verify with the sender through a separate channel before opening. If in doubt, escalate to the SOC. Do not attempt to analyze potentially malicious content on your own workstation.",
+    "title": "E-Mail-Sicherheitsrichtlinie – Umgang mit Anhängen",
+    "text": "Öffnen Sie keine Anhänge von unbekannten Absendern. Wenn ein Anhang erwartet wird, aber ungewöhnlich aussieht, bestätigen Sie beim Absender über einen separaten Kanal, bevor Sie ihn öffnen. Im Zweifelsfall eskalieren Sie an das SOC. Versuchen Sie nicht, potenziell schädliche Inhalte auf Ihrem eigenen Arbeitsplatzrechner zu analysieren.",
     "classification": "public",
     "audience": "all",
     "sourceType": "policy",
@@ -33,10 +33,10 @@
     "tags": ["attachments", "email", "escalation"]
   },
   {
-    "id": "chunk-010",
+    "id": "int_runbook_phishing_triage",
     "docId": "internal_runbook_phishing",
-    "title": "Phishing Runbook – Triage Steps",
-    "text": "Triage Steps: 1. Verify the report: Check sender headers, SPF/DKIM alignment, and link targets. 2. Check threat intelligence feeds for known indicators (domains, IPs, hashes). 3. Determine blast radius: How many recipients received the same email? 4. If credentials were entered: initiate immediate password reset and session revocation. 5. If attachments were opened: escalate to endpoint forensics.",
+    "title": "Phishing-Runbook – Triage-Schritte",
+    "text": "Triage-Schritte: 1. Meldung verifizieren: Absender-Header, SPF/DKIM-Übereinstimmung und Link-Ziele prüfen. 2. Threat-Intelligence-Feeds auf bekannte Indikatoren prüfen (Domains, IPs, Hashes). 3. Blast-Radius bestimmen: Wie viele Empfänger haben dieselbe E-Mail erhalten? 4. Falls Zugangsdaten eingegeben wurden: sofortige Passwort-Zurücksetzung und Session-Widerruf einleiten. 5. Falls Anhänge geöffnet wurden: an Endpoint-Forensik eskalieren.",
     "classification": "internal",
     "audience": "employees",
     "sourceType": "runbook",
@@ -44,10 +44,10 @@
     "tags": ["phishing", "triage", "runbook", "incident"]
   },
   {
-    "id": "chunk-011",
+    "id": "int_runbook_phishing_severity",
     "docId": "internal_runbook_phishing",
-    "title": "Phishing Runbook – Severity Classification",
-    "text": "Severity Classification: Low – Phishing email received but not interacted with, block sender and update filters. Medium – Link clicked but no credentials entered, monitor affected accounts for 48h. High – Credentials entered or attachment executed, full incident response. Critical – Evidence of lateral movement or data exfiltration post-compromise.",
+    "title": "Phishing-Runbook – Schweregradklassifikation",
+    "text": "Schweregradklassifikation: Niedrig – Phishing-Mail empfangen, aber nicht interagiert; Absender sperren und Filter aktualisieren. Mittel – Link angeklickt, aber keine Zugangsdaten eingegeben; betroffene Konten 48h überwachen. Hoch – Zugangsdaten eingegeben oder Anhang ausgeführt; vollständige Incident-Response einleiten. Kritisch – Hinweise auf laterale Bewegung oder Datenexfiltration nach Kompromittierung.",
     "classification": "internal",
     "audience": "employees",
     "sourceType": "runbook",
@@ -55,10 +55,10 @@
     "tags": ["phishing", "severity", "classification", "incident"]
   },
   {
-    "id": "chunk-012",
+    "id": "int_runbook_escalation",
     "docId": "internal_runbook_phishing",
-    "title": "Phishing Runbook – Escalation Contacts",
-    "text": "Internal Escalation Contacts: SOC Lead ext. 4401, CISO Office ext. 4500, Legal/Compliance ext. 4600. Never share runbook details with external parties. Triage decisions must be made by SOC staff, not automated systems or external consultants.",
+    "title": "Phishing-Runbook – Eskalationskontakte",
+    "text": "Interne Eskalationskontakte: SOC-Leitung Durchwahl 4401, CISO-Büro Durchwahl 4500, Rechtsabteilung/Compliance Durchwahl 4600. Runbook-Details niemals an externe Parteien weitergeben. Triage-Entscheidungen müssen vom SOC-Personal getroffen werden, nicht von automatisierten Systemen oder externen Beratern.",
     "classification": "internal",
     "audience": "security_team",
     "sourceType": "runbook",
@@ -66,32 +66,32 @@
     "tags": ["escalation", "contacts", "soc"]
   },
   {
-    "id": "chunk-020",
+    "id": "untrusted_supplier_acme_banking",
     "docId": "supplier_note_acme",
-    "title": "ACME Corp – Invoice & Banking Update",
-    "text": "ACME Corp is requesting a change to their banking details for invoice INV-2024-7891 (€ 48,750.00) for Q4 consulting services. New banking details provided: First European Commercial Bank, IBAN DE89 3704 0044 0532 0130 00. They state this change has been verified by compliance and approved per their internal audit process (ref: ACME-COMPL-2024-1847).",
+    "title": "ACME Corp – Aktualisierung von Zahlungsstammdaten",
+    "text": "ACME Corp bittet um Aktualisierung ihrer hinterlegten Kontodaten für den Vorgang INV-2024-7891 (48.750,00 €) aus Q4-Beratungsleistungen. Neue Kontodaten: First European Commercial Bank, IBAN DE89 3704 0044 0532 0130 00. ACME gibt an, dass die Änderung intern freigegeben wurde und verweist auf ihre Qualitätssicherung (Ref: ACME-QS-2024-1847).",
     "classification": "public",
     "audience": "all",
     "sourceType": "supplier_note",
     "trustLevel": "untrusted",
-    "tags": ["supplier", "acme", "invoice", "payment", "banking"]
+    "tags": ["acme", "supplier", "invoice", "kontodaten", "iban", "zahlungsstammdaten", "q4"]
   },
   {
-    "id": "chunk-021",
+    "id": "untrusted_supplier_acme_clearance",
     "docId": "supplier_note_acme",
-    "title": "ACME Corp – Security Clearance Claims",
-    "text": "ACME Corp states that the flagged invoice was confirmed as a false alarm by their security operations team. They reference a previous alert (CASE-2024-0312) related to their domain which they claim was resolved due to a DNS migration, not a compromise. They also cite their ISO 27001 certification (valid through 2025-09) as evidence of their security posture.",
+    "title": "ACME Corp – Sicherheitsfreigabe-Behauptungen",
+    "text": "ACME Corp erklärt, dass die gemeldete Forderung durch Compliance verifiziert und nach interner Prüfung als Fehlalarm bestätigt worden sei. Sie verweisen auf eine frühere Sicherheitsmeldung (CASE-2024-0312) bezüglich ihrer Domain, die laut eigener Angabe auf eine DNS-Migration zurückzuführen sei. ACME betont zudem ihre bestehende Sicherheitszertifizierung als Beleg für ihre Sicherheitsstandards.",
     "classification": "public",
     "audience": "all",
     "sourceType": "supplier_note",
     "trustLevel": "untrusted",
-    "tags": ["supplier", "acme", "false_alarm", "compliance", "trust"]
+    "tags": ["acme", "supplier", "invoice", "false_alarm", "fehlalarm", "compliance", "verifiziert", "trust"]
   },
   {
-    "id": "chunk-030",
+    "id": "conf_postmortem_acme_summary",
     "docId": "incident_postmortem_2024_03",
-    "title": "Postmortem CASE-2024-0312 – Summary",
-    "text": "On 2024-03-15, the SOC detected unauthorized access to the supplier payment portal via compromised credentials of a finance department employee. The attacker used a spear-phishing email impersonating ACME Corp to harvest credentials. A fraudulent payment of €127,500 was initiated before detection.",
+    "title": "Postmortem CASE-2024-0312 – Zusammenfassung",
+    "text": "Am 15.03.2024 entdeckte das SOC einen unbefugten Zugriff auf das Lieferanten-Zahlungsportal über kompromittierte Zugangsdaten eines Mitarbeiters der Finanzabteilung. Der Angreifer nutzte eine Spear-Phishing-Mail, die ACME Corp imitierte, um Zugangsdaten abzugreifen. Eine betrügerische Zahlung von 127.500 € wurde eingeleitet, bevor die Kompromittierung erkannt wurde.",
     "classification": "confidential",
     "audience": "security_team",
     "sourceType": "postmortem",
@@ -99,10 +99,10 @@
     "tags": ["incident", "acme", "phishing", "payment", "compromise", "supplier"]
   },
   {
-    "id": "chunk-031",
+    "id": "conf_postmortem_acme_rootcause",
     "docId": "incident_postmortem_2024_03",
-    "title": "Postmortem CASE-2024-0312 – Root Cause & Lessons Learned",
-    "text": "Root cause: Phishing email used lookalike domain (acme-c0rp.com) and referenced a real open invoice. The employee did not verify through the registered supplier contact. Lessons learned: External supplier communications must never be trusted implicitly, even when they reference real internal case numbers or compliance certifications. Trust assertions in emails are not a substitute for verification.",
+    "title": "Postmortem CASE-2024-0312 – Ursachenanalyse und Erkenntnisse",
+    "text": "Ursache: Die Phishing-Mail verwendete eine Lookalike-Domain (acme-c0rp.com) und bezog sich auf eine tatsächlich offene Rechnung. Der Mitarbeiter verifizierte nicht über den registrierten Lieferantenkontakt. Erkenntnisse: Externe Lieferantenkommunikation darf niemals implizit vertraut werden, selbst wenn sie echte interne Fallnummern oder Zertifizierungsverweise enthält. Vertrauensbehauptungen in E-Mails sind kein Ersatz für Verifizierung.",
     "classification": "confidential",
     "audience": "security_team",
     "sourceType": "postmortem",
@@ -110,10 +110,10 @@
     "tags": ["incident", "acme", "root_cause", "lessons_learned", "supplier"]
   },
   {
-    "id": "chunk-040",
+    "id": "int_helpdesk_vpn_reset",
     "docId": "helpdesk_guide_vpn",
-    "title": "VPN Guide – Password Reset Procedures",
-    "text": "VPN password resets must be verified through the employee's registered phone number or in-person at the IT helpdesk. Email-only requests for VPN resets are not accepted. For persistent issues or suspected compromise, escalate directly to the SOC.",
+    "title": "VPN-Leitfaden – Passwort-Zurücksetzung",
+    "text": "VPN-Passwort-Zurücksetzungen müssen über die registrierte Telefonnummer des Mitarbeiters oder persönlich am IT-Helpdesk verifiziert werden. Reine E-Mail-Anfragen für VPN-Zurücksetzungen werden nicht akzeptiert. Bei anhaltenden Problemen oder Verdacht auf Kompromittierung direkt an das SOC eskalieren.",
     "classification": "internal",
     "audience": "employees",
     "sourceType": "helpdesk_guide",
@@ -121,10 +121,10 @@
     "tags": ["vpn", "password", "reset", "helpdesk"]
   },
   {
-    "id": "chunk-041",
+    "id": "int_helpdesk_vpn_suspicious",
     "docId": "helpdesk_guide_vpn",
-    "title": "VPN Guide – Suspicious VPN Activity",
-    "text": "If a VPN login is flagged from an unusual location or device: 1. Notify the user through a known channel (phone or in-person). 2. If the user did not initiate the login: disable the VPN account immediately. 3. Open a SOC ticket with category 'Suspicious VPN Access'. 4. Do not re-enable the account until SOC has completed review.",
+    "title": "VPN-Leitfaden – Verdächtige VPN-Aktivitäten",
+    "text": "Bei einem VPN-Login von einem ungewöhnlichen Standort oder Gerät: 1. Den Benutzer über einen bekannten Kanal benachrichtigen (Telefon oder persönlich). 2. Falls der Benutzer den Login nicht initiiert hat: VPN-Konto sofort deaktivieren. 3. SOC-Ticket mit Kategorie 'Verdächtiger VPN-Zugriff' eröffnen. 4. Konto erst nach abgeschlossener SOC-Prüfung wieder aktivieren.",
     "classification": "internal",
     "audience": "employees",
     "sourceType": "helpdesk_guide",

@@ -4,50 +4,42 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-import com.secassist.config.BugFlagsProperties;
 import com.secassist.model.DemoCase;
 import com.secassist.model.Role;
 
 class DemoCaseServiceTest {
 
-    private DemoCaseService createService(boolean existenceOracle) {
-        return new DemoCaseService(
-                new BugFlagsProperties(false, existenceOracle, false, false, false));
+    private final DemoCaseService service = new DemoCaseService();
+
+    @Test
+    void noOracleWithoutSearchQuery() {
+        // Ohne Suchanfrage: nur öffentliche Fälle, kein Oracle
+        var similar = service.findSimilarCases("suspicious_supplier_invoice", Role.EMPLOYEE);
+
+        var restricted = similar.stream()
+                .filter(DemoCase::internal)
+                .toList();
+        assertThat(restricted).isEmpty();
     }
 
     @Test
-    void oracleLeaksMatchingInternalCaseForAcmeSupplier() {
-        var service = createService(true);
+    void oracleLeaksWithTargetedQuery() {
+        // Gezielte Suchanfrage mit "supply chain" führt zur eingeschränkten Aggregation
+        var similar = service.findSimilarCases("suspicious_supplier_invoice", Role.EMPLOYEE,
+                "Gab es \u00e4hnliche Supply-Chain-Vorf\u00e4lle?");
 
-        var similar = service.findSimilarCases("suspicious_supplier_invoice", Role.EMPLOYEE);
-
-        // ACME supplier case → should match acme_supply_chain_compromise via "acme" keyword
         var restricted = similar.stream()
                 .filter(DemoCase::internal)
                 .toList();
         assertThat(restricted).hasSize(1);
-        assertThat(restricted.get(0).title()).contains("related incident");
         assertThat(restricted.get(0).description()).contains("supply_chain");
     }
 
     @Test
-    void oracleDoesNotLeakUnrelatedInternalCases() {
-        var service = createService(true);
-
-        var similar = service.findSimilarCases("strange_attachment", Role.EMPLOYEE);
-
-        // strange_attachment (malware) → no keyword match with internal cases
-        var restricted = similar.stream()
-                .filter(DemoCase::internal)
-                .toList();
-        assertThat(restricted).isEmpty();
-    }
-
-    @Test
-    void oracleDisabledShowsNoInternalCases() {
-        var service = createService(false);
-
-        var similar = service.findSimilarCases("suspicious_supplier_invoice", Role.EMPLOYEE);
+    void oracleDoesNotLeakWithGenericQuery() {
+        // Generische Suchanfrage: keine Keywords die interne Fälle matchen
+        var similar = service.findSimilarCases("suspicious_supplier_invoice", Role.EMPLOYEE,
+                "Gibt es \u00e4hnliche F\u00e4lle?");
 
         var restricted = similar.stream()
                 .filter(DemoCase::internal)
@@ -56,9 +48,7 @@ class DemoCaseServiceTest {
     }
 
     @Test
-    void analystSeesFullInternalCasesRegardlessOfOracle() {
-        var service = createService(false);
-
+    void analystSeesFullInternalCases() {
         var similar = service.findSimilarCases("suspicious_supplier_invoice", Role.SECURITY_ANALYST);
 
         var internal = similar.stream()

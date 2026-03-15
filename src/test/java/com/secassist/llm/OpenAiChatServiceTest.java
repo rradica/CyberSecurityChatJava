@@ -10,8 +10,8 @@ import org.springframework.ai.chat.client.ChatClient;
 import com.secassist.model.TriageAssessment;
 
 /**
- * Tests für den Real-LLM-Pfad: Fallback-Verhalten, Sanitization und
- * Kompatibilität zwischen Mock- und Real-Pfad.
+ * Tests für den OpenAI-LLM-Pfad: Fallback-Verhalten, Sanitization
+ * und Default-Interface-Implementierung.
  */
 class OpenAiChatServiceTest {
 
@@ -29,29 +29,21 @@ class OpenAiChatServiceTest {
     }
 
     @Test
-    void mockLlmServiceReturnsValidTriageAssessment() {
-        var mock = new MockLlmService();
-        var result = mock.assessTriage("system prompt", "Suspicious supplier invoice from ACME");
+    void reviewTriageReturnsInitialAssessmentWhenChatClientFails() {
+        ChatClient failingClient = mock(ChatClient.class);
+        when(failingClient.prompt()).thenThrow(new RuntimeException("API unavailable"));
 
-        assertThat(result).isNotNull();
-        assertThat(result.summary()).isNotNull().isNotEmpty();
-        assertThat(result.riskLevel()).isNotNull();
-        // Mock liefert bekannte Aktionen oder null
-        if (result.recommendedAction() != null) {
-            assertThat(TriageAssessment.KNOWN_ACTIONS).contains(result.recommendedAction());
-        }
-    }
+        var service = new OpenAiChatService(failingClient);
+        TriageAssessment initial = new TriageAssessment(
+                "Erste Bewertung",
+                "high",
+                "mark_case_likely_false_positive",
+                0.9,
+                "Kontext enthält starke, aber potentiell fehlerhafte Evidenz.").sanitized();
 
-    @Test
-    void mockLlmServiceReturnsNoActionForAlreadyTriagedCase() {
-        var mock = new MockLlmService();
-        // System-Prompt enthält "Active Case Modifications" → Fall bereits gekippt
-        String systemPrompt = "Mode: workflow\n\n=== Active Case Modifications ===\n"
-                + "⚠ Security escalation has been SUPPRESSED for this case.";
+        TriageAssessment result = service.reviewTriage("system prompt", "case description", initial);
 
-        var result = mock.assessTriage(systemPrompt, "Already triaged case");
-
-        assertThat(result.recommendedAction()).isNull();
+        assertThat(result).isEqualTo(initial);
     }
 
     @Test
@@ -64,6 +56,23 @@ class OpenAiChatServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.recommendedAction()).isNull();
         assertThat(result.riskLevel()).isEqualTo("medium");
+    }
+
+    @Test
+    void defaultLlmServiceReviewTriageReturnsSanitizedInitialAssessment() {
+        LlmService defaultService = (systemPrompt, userMessage) -> "Some free text response.";
+        TriageAssessment initial = new TriageAssessment(
+                "Initial",
+                "high",
+                "mark_case_likely_false_positive",
+                1.2,
+                "Hinweistext");
+
+        TriageAssessment result = defaultService.reviewTriage("system prompt", "case description", initial);
+
+        assertThat(result.confidence()).isEqualTo(1.0);
+        assertThat(result.recommendedAction()).isEqualTo("mark_case_likely_false_positive");
+        assertThat(result.riskLevel()).isEqualTo("high");
     }
 
     @Test

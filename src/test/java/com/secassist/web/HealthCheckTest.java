@@ -41,11 +41,4 @@ class HealthCheckTest {
                 .andExpect(jsonPath("$.length()").value(3));
     }
 
-    @Test
-    void bugFlagsEndpointReturnsFlags() throws Exception {
-        mockMvc.perform(get("/api/bug-flags"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.handoverScope").isBoolean())
-                .andExpect(jsonPath("$.toolFasttrack").isBoolean());
-    }
 }

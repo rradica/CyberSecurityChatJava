@@ -9,12 +9,3 @@ spring:
         options:
           model: gpt-4o-mini
           temperature: 0.1
-
-secassist:
-  mock-llm: ${SECASSIST_MOCK_LLM:true}
-  bug-flags:
-    handover-scope: true
-    existence-oracle: true
-    thread-stickiness: true
-    trust-merge: true
-    tool-fasttrack: true

@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import com.secassist.config.BugFlagsProperties;
 import com.secassist.model.DemoCase;
 import com.secassist.model.Role;
 
@@ -27,48 +26,45 @@ public class DemoCaseService {
 
     private static final Logger log = LoggerFactory.getLogger(DemoCaseService.class);
 
-    private final BugFlagsProperties bugFlags;
-
     /** Öffentlich sichtbare Demo-Fälle. */
     private static final List<DemoCase> PUBLIC_CASES = List.of(
             new DemoCase("suspicious_supplier_invoice",
-                    "Suspicious Supplier Invoice",
-                    "ACME Corp sent an invoice with changed banking details and compliance references",
+                    "Verd\u00e4chtige Lieferantenrechnung",
+                    "ACME Corp hat eine Rechnung mit ge\u00e4nderten Bankdaten und Compliance-Verweisen gesendet",
                     "phishing", "medium",
                     List.of("supplier_note_acme", "public_policy_email")),
             new DemoCase("strange_attachment",
-                    "Strange Attachment",
-                    "Employee received an email with an unexpected .iso attachment from a known contact",
+                    "Seltsamer E-Mail-Anhang",
+                    "Mitarbeiter erhielt eine E-Mail mit unerwartetem .iso-Anhang von einem bekannten Kontakt",
                     "malware", "high",
                     List.of("public_policy_email")),
             new DemoCase("suspicious_vpn_reset",
-                    "Suspicious VPN Reset",
-                    "VPN password reset requested via email from an unknown location",
+                    "Verd\u00e4chtige VPN-Zur\u00fccksetzung",
+                    "VPN-Passwort-Zur\u00fccksetzung per E-Mail von einem unbekannten Standort angefordert",
                     "account_compromise", "medium",
                     List.of("helpdesk_guide_vpn")),
             new DemoCase("finance_phishing",
-                    "Finance Department Phishing",
-                    "Targeted phishing email mimicking the CFO, requesting urgent wire transfer",
+                    "Phishing gegen Finanzabteilung",
+                    "Gezielte Phishing-Mail, die den CFO imitiert und eine dringende \u00dcberweisung fordert",
                     "phishing", "high",
                     List.of("public_policy_email", "internal_runbook_phishing"))
     );
 
-    /** Interne Fälle – sollten nur für Security-Analysten sichtbar sein. */
+    /** Interne F\u00e4lle \u2013 sollten nur f\u00fcr Security-Analysten sichtbar sein. */
     private static final List<DemoCase> INTERNAL_CASES = List.of(
             new DemoCase("insider_data_exfil_2024",
-                    "Internal: Data Exfiltration Incident 2024",
-                    "Detected unusual data transfer patterns from engineering department",
+                    "Intern: Datenexfiltration 2024",
+                    "Ungew\u00f6hnliche Daten\u00fcbertragungsmuster aus der Entwicklungsabteilung entdeckt",
                     "insider_threat", "critical",
                     List.of("incident_postmortem_2024_03"), true),
             new DemoCase("acme_supply_chain_compromise",
-                    "Internal: ACME Corp Supply Chain Compromise",
-                    "Evidence of credential harvesting via fake ACME Corp portal – €127,500 loss",
+                    "Intern: ACME Corp Supply-Chain-Kompromittierung",
+                    "Credential-Harvesting \u00fcber gef\u00e4lschtes ACME-Corp-Portal \u2013 \u20ac127.500 Verlust",
                     "supply_chain", "critical",
                     List.of("incident_postmortem_2024_03"), true)
     );
 
-    public DemoCaseService(BugFlagsProperties bugFlags) {
-        this.bugFlags = bugFlags;
+    public DemoCaseService() {
     }
 
     /**
@@ -99,15 +95,28 @@ public class DemoCaseService {
     /**
      * Findet ähnliche Fälle zum angegebenen Fall.
      *
-     * <p>Enthält ggf. redaktierte Zusammenfassungen eingeschränkter Fälle,
-     * damit Benutzer einen vollständigen Überblick über die Incident-Landschaft
-     * erhalten, ohne vertrauliche Details offenzulegen.</p>
-     *
      * @param caseId der aktuelle Fall
      * @param role   die aktuelle Benutzerrolle
      * @return Liste ähnlicher Fälle
      */
     public List<DemoCase> findSimilarCases(String caseId, Role role) {
+        return findSimilarCases(caseId, role, null);
+    }
+
+    /**
+     * Findet ähnliche Fälle zum angegebenen Fall.
+     *
+     * <p>Unterstützt eine optionale Suchanfrage, um die Ähnlichkeitssuche
+     * zu verfeinern. Bei Suchanfragen werden auch eingeschränkte Fälle
+     * in die Keyword-Suche einbezogen, damit Benutzer einen vollständigeren
+     * Überblick über die Incident-Landschaft erhalten.</p>
+     *
+     * @param caseId der aktuelle Fall
+     * @param role   die aktuelle Benutzerrolle
+     * @param query  optionale Suchanfrage für erweiterte Ähnlichkeitssuche
+     * @return Liste ähnlicher Fälle
+     */
+    public List<DemoCase> findSimilarCases(String caseId, Role role, String query) {
         DemoCase currentCase = findById(caseId);
 
         List<DemoCase> similar = new ArrayList<>(
@@ -117,32 +126,25 @@ public class DemoCaseService {
         );
 
         if (role == Role.SECURITY_ANALYST) {
-            // Analysts see full internal case details
+            // Analysten sehen vollständige Details interner Fälle
             similar.addAll(INTERNAL_CASES);
-        } else if (bugFlags.existenceOracle()) {
-            // SCHWACHSTELLE [BUG_EXISTENCE_ORACLE]: Auch Nicht-Analysten erhalten
-            // einen aggregierten Hinweis über fallbezogene interne Vorfälle. Dabei
-            // leaken Anzahl, Typ-Kategorien (z.B. "supply_chain") und maximaler
-            // Schweregrad ("critical") passender eingeschränkter Fälle – wertvolle
-            // Recon-Daten für Angreifer, die als hilfreicher Similar-Cases-Hinweis
-            // getarnt sind.
-            // SOLL: Diesen else-if-Zweig komplett entfernen. Interne Fälle (auch
-            // aggregiert) dürfen NUR für Role.SECURITY_ANALYST sichtbar sein.
-            similar.addAll(redactedSummaries(caseId, currentCase));
+        } else if (query != null && !query.isBlank()) {
+            // Bei Suchanfragen auch interne Fälle in die Keyword-Suche einbeziehen
+            // und aggregierte Metadaten zurückgeben, damit Benutzer einen
+            // umfassenderen Überblick erhalten.
+            similar.addAll(redactedSummaries(caseId, currentCase, query));
         }
 
         return similar;
     }
 
     /**
-     * Returns an aggregated, case-specific hint about matching restricted cases.
-     * Only internal cases with keyword overlap to the current case are included.
-     * Leaks count, pattern types, and max severity of matching cases –
-     * enough for targeted reconnaissance.
+     * Aggregierte, fallbezogene Zusammenfassung passender eingeschränkter Fälle.
+     * Berücksichtigt sowohl den aktuellen Fall als auch die Suchanfrage.
      */
-    private List<DemoCase> redactedSummaries(String caseId, DemoCase currentCase) {
+    private List<DemoCase> redactedSummaries(String caseId, DemoCase currentCase, String query) {
         List<DemoCase> matching = INTERNAL_CASES.stream()
-                .filter(c -> matchesCase(c, caseId, currentCase))
+                .filter(c -> matchesQuery(c, query))
                 .toList();
 
         if (matching.isEmpty()) {
@@ -161,21 +163,41 @@ public class DemoCaseService {
 
         return List.of(new DemoCase(
                 "restricted_match",
-                "[Restricted] " + count + " related incident(s) on file",
-                "Matching pattern categories: " + types
-                        + " | Max severity: " + maxSeverity
-                        + " | Access restricted \u2013 requires security_analyst role",
+                "[Eingeschr\u00e4nkt] " + count + " verwandte(r) Vorfall/Vorf\u00e4lle vorhanden",
+                "Passende Kategorien: " + types
+                        + " | Max. Schweregrad: " + maxSeverity
+                        + " | Zugriff eingeschr\u00e4nkt \u2013 erfordert security_analyst-Rolle",
                 "restricted_match",
                 maxSeverity,
                 List.of(),
                 true));
     }
 
-    /** Stoppwörter, die zu generisch für Keyword-Matching sind. */
+    /** Stoppw\u00f6rter, die zu generisch f\u00fcr Keyword-Matching sind. */
     private static final Set<String> STOP_WORDS = Set.of(
             "from", "with", "this", "that", "into", "over", "been", "have",
             "will", "were", "does", "than", "then", "also", "they", "them",
-            "each", "some", "when", "what", "sent", "received");
+            "each", "some", "when", "what", "sent", "received",
+            "eine", "einer", "einem", "einen", "dass", "wird", "wurde",
+            "haben", "sind", "sein", "oder", "nach", "auch", "sich",
+            "nicht", "noch", "bitte", "gibt", "gab");
+
+    /**
+     * Prüft, ob ein interner Fall auf die Suchanfrage passt.
+     * Schlüsselwörter (>= 4 Zeichen, ohne Stoppwörter) aus der Anfrage
+     * werden gegen ID, Typ und Beschreibung des internen Falls abgeglichen.
+     */
+    private boolean matchesQuery(DemoCase internalCase, String query) {
+        if (query == null || query.isBlank()) return false;
+        String target = (internalCase.id() + " " + internalCase.type().replace('_', ' ')
+                + " " + internalCase.description()).toLowerCase();
+        for (String word : query.toLowerCase().split("[^\\p{L}\\p{N}]+")) {
+            if (word.length() >= 4 && !STOP_WORDS.contains(word) && target.contains(word)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
      * Prüft, ob ein interner Fall thematisch zum aktuellen Fall passt.

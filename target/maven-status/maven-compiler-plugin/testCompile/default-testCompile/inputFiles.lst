@@ -1,5 +1,11 @@
-F:\Sources\AICyberSecurityChatJava\src\test\java\com\secassist\config\BugFlagsTest.java
+F:\Sources\AICyberSecurityChatJava\src\test\java\com\secassist\integration\CaseExploitIntegrationTest.java
+F:\Sources\AICyberSecurityChatJava\src\test\java\com\secassist\llm\OpenAiChatServiceTest.java
+F:\Sources\AICyberSecurityChatJava\src\test\java\com\secassist\llm\RealLlmSmokeTest.java
+F:\Sources\AICyberSecurityChatJava\src\test\java\com\secassist\model\CaseStateTest.java
+F:\Sources\AICyberSecurityChatJava\src\test\java\com\secassist\model\TriageAssessmentTest.java
 F:\Sources\AICyberSecurityChatJava\src\test\java\com\secassist\policy\PolicyEngineTest.java
 F:\Sources\AICyberSecurityChatJava\src\test\java\com\secassist\retrieval\RetrievalServiceTest.java
+F:\Sources\AICyberSecurityChatJava\src\test\java\com\secassist\service\ConversationServiceTest.java
+F:\Sources\AICyberSecurityChatJava\src\test\java\com\secassist\service\DemoCaseServiceTest.java
 F:\Sources\AICyberSecurityChatJava\src\test\java\com\secassist\tools\ToolPolicyServiceTest.java
 F:\Sources\AICyberSecurityChatJava\src\test\java\com\secassist\web\HealthCheckTest.java
