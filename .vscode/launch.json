@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "SecAssistApplication",
+      "type": "java",
+      "request": "launch",
+      "mainClass": "com.secassist.SecAssistApplication",
+      "projectName": "secassist",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "OPENAI_API_KEY": "${env:OPENAI_API_KEY}"
+      }
+    }
+  ]
+}

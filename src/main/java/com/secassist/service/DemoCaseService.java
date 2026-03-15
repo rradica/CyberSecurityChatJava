@@ -22,6 +22,12 @@ import com.secassist.model.Role;
  * <p>Aehnliche Faelle werden inklusive redaktierter Zusammenfassungen aus
  * eingeschraenkten Faellen zurueckgegeben, damit alle Benutzer einen Ueberblick
  * ueber die Incident-Landschaft erhalten.</p>
+ *
+ * <p>SCHWACHSTELLE [BUG_EXISTENCE_ORACLE]: Fuer Nicht-Analysten kann die
+ * Similar-Cases-Suche einen plausibel wirkenden Similarity-Hinweis aus dem
+ * eingeschraenkten Korpus zurueckgeben. Dieser Hinweis soll nur die UX
+ * verbessern, leaket aber weiterhin Existenz, Themenbereich und Risikoprofil
+ * interner Vorfaelle.</p>
  */
 @Service
 public class DemoCaseService {
@@ -240,9 +246,11 @@ public class DemoCaseService {
             // Analysten sehen vollstaendige Details interner Faelle
             similar.addAll(INTERNAL_CASES);
         } else if (query != null && !query.isBlank()) {
-            // Bei Suchanfragen auch interne Faelle in die Keyword-Suche einbeziehen
-            // und aggregierte Metadaten zurueckgeben, damit Benutzer einen
-            // umfassenderen Ueberblick erhalten.
+            // SCHWACHSTELLE [BUG_EXISTENCE_ORACLE]: Bei Suchanfragen fliesst ein
+            // eingeschraenkter Korpus in die Similarity-Bewertung ein. Statt die
+            // Treffer hart auszublenden, wird ein "harmloser" Korrelationshinweis
+            // fuer die Ergebnisqualitaet erzeugt. Dadurch leaken weiterhin Anzahl,
+            // Themenbereich und Risikoprofil interner Vorfaelle an Nicht-Analysten.
             similar.addAll(redactedSummaries(caseId, currentCase, query));
         }
 
@@ -255,6 +263,7 @@ public class DemoCaseService {
      */
     private List<DemoCase> redactedSummaries(String caseId, DemoCase currentCase, String query) {
         List<DemoCase> matching = INTERNAL_CASES.stream()
+                .filter(c -> matchesCurrentCaseContext(c, caseId, currentCase))
                 .filter(c -> matchesQuery(c, query))
                 .toList();
 
@@ -273,15 +282,45 @@ public class DemoCaseService {
                 .orElse("unknown");
 
         return List.of(new DemoCase(
-                "restricted_match",
-                "[Eingeschr\u00e4nkt] " + count + " verwandte(r) Vorfall/Vorf\u00e4lle vorhanden",
-                "Passende Kategorien: " + types
-                        + " | Max. Schweregrad: " + maxSeverity
-                        + " | Zugriff eingeschr\u00e4nkt \u2013 erfordert security_analyst-Rolle",
-                "restricted_match",
+                "internal_similarity_signal",
+                "Eingeschraenkter Referenzhinweis",
+                "Die Similar-Cases-Suche hat " + count
+                        + " eingeschraenkten Praezedenzfall/Praezedenzfaelle im Themenbereich "
+                        + types + " mit Risikoprofil " + maxSeverity
+                        + " gefunden. Vollsicht erfordert die security_analyst-Rolle.",
+                "correlation_hint",
                 maxSeverity,
                 List.of(),
                 true));
+    }
+
+    /**
+     * Prueft, ob ein interner Fall thematisch zum aktuellen Fall passt.
+     * Die Similarity-Suche nutzt damit nicht nur freie Query-Keywords,
+     * sondern auch den Kontext des geoeffneten Falls.
+     */
+    private boolean matchesCurrentCaseContext(DemoCase internalCase, String caseId, DemoCase currentCase) {
+        Set<String> keywords = new HashSet<>();
+        if (caseId != null) {
+            for (String kw : caseId.split("_")) {
+                addKeyword(keywords, kw);
+            }
+        }
+        if (currentCase != null) {
+            for (String kw : currentCase.type().split("_")) {
+                addKeyword(keywords, kw);
+            }
+            for (String kw : currentCase.description().split("\\W+")) {
+                addKeyword(keywords, kw);
+            }
+        }
+        if (keywords.isEmpty()) {
+            return true;
+        }
+
+        String target = (internalCase.id() + " " + internalCase.type().replace('_', ' ')
+                + " " + internalCase.description()).toLowerCase();
+        return keywords.stream().anyMatch(target::contains);
     }
 
     /** Stoppw\u00f6rter, die zu generisch f\u00fcr Keyword-Matching sind. */
@@ -310,34 +349,7 @@ public class DemoCaseService {
         return false;
     }
 
-    /**
-     * Prueft, ob ein interner Fall thematisch zum aktuellen Fall passt.
-     * Einfaches Keyword-Matching: Schluesselwoerter (>= 4 Zeichen, ohne
-     * Stoppwoerter) aus caseId, Typ und Beschreibung des aktuellen Falls
-     * werden gegen ID, Typ und Beschreibung des internen Falls abgeglichen.
-     */
-    private boolean matchesCase(DemoCase internalCase, String caseId, DemoCase currentCase) {
-        Set<String> keywords = new HashSet<>();
-        if (caseId != null) {
-            for (String kw : caseId.split("_")) {
-                addKeyword(keywords, kw);
-            }
-        }
-        if (currentCase != null) {
-            for (String kw : currentCase.type().split("_")) {
-                addKeyword(keywords, kw);
-            }
-            for (String kw : currentCase.description().split("\\W+")) {
-                addKeyword(keywords, kw);
-            }
-        }
-
-        String target = (internalCase.id() + " " + internalCase.type().replace('_', ' ')
-                + " " + internalCase.description()).toLowerCase();
-        return keywords.stream().anyMatch(target::contains);
-    }
-
-    private static void addKeyword(Set<String> keywords, String word) {
+    private void addKeyword(Set<String> keywords, String word) {
         String lower = word.toLowerCase();
         if (lower.length() >= 4 && !STOP_WORDS.contains(lower)) {
             keywords.add(lower);
@@ -354,8 +366,4 @@ public class DemoCaseService {
         };
     }
 
-    private static String capitalize(String s) {
-        if (s == null || s.isEmpty()) return s;
-        return Character.toUpperCase(s.charAt(0)) + s.substring(1);
-    }
 }

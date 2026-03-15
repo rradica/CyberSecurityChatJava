@@ -60,8 +60,13 @@ Dann im Browser: **http://localhost:8080**
 
 1. Repository in Codespaces oeffnen
 2. Warten bis der DevContainer gebaut ist
-3. `./mvnw spring-boot:run` ausfuehren
-4. Port 8080 wird automatisch weitergeleitet
+3. Die Abhaengigkeiten werden beim Erstellen des Containers automatisch vorbereitet
+4. App direkt starten ueber eine der folgenden Varianten:
+   - **Run and Debug** -> Konfiguration **`SecAssistApplication`** starten
+   - oder **Terminal / Run Task** -> **`SecAssist: spring-boot:run`** ausfuehren
+5. Port 8080 wird automatisch weitergeleitet und als **SecAssist** geoeffnet
+
+Hinweis: Fuer LLM-gestuetzte Requests wird weiterhin ein gueltiger `OPENAI_API_KEY` benoetigt.
 
 ## Technischer Stack
 
@@ -124,7 +129,7 @@ Im Handover-Modus verwendet der Retrieval-Policy-Filter fest kodierte Security-T
 **Ort:** `RetrievalService.retrieve()`
 
 ### 2. EXISTENCE_ORACLE (Information Disclosure / Recon)
-Bei gezielten Similar-Cases-Anfragen werden aggregierte Metadaten interner Vorfaelle auch an Nicht-Analysten sichtbar.
+Bei gezielten Similar-Cases-Anfragen erscheint fuer Nicht-Analysten ein plausibel wirkender Similarity-Hinweis aus dem eingeschraenkten Korpus, der weiterhin Anzahl, Themenbereich und Risikoprofil interner Vorfaelle leaket.
 
 **Ort:** `DemoCaseService.findSimilarCases()` + `ChatOrchestrator.handleSimilarCases()` + `ConversationService.processMessage()`
 

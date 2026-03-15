@@ -24,11 +24,13 @@ import java.util.Set;
  *
  * <p>Uebersetzt natuerliche Freitext-Nachrichten in strukturierte
  * {@link ChatRequest}-Objekte. Trackt den aktiven Fall in der Session,
- * sodass Folgefragen zum selben Fall ohne erneute Fallnennung moeglich sind.</p>
+ * sodass Folgefragen zum selben Fall ohne erneute Fallnennung moeglich sind.
+ * Fuer Notizen und externe Rueckmeldungen verwaltet die Klasse ausserdem einen
+ * kleinen, bewusst direkten Persistenzpfad ueber den {@link RetrievalService}.</p>
  *
- * <p>Wichtig: Diese Schicht ist eine reine Uebersetzung. Sie beruehrt
- * keine der Sicherheitslogiken (Policy, Retrieval, Tool-Freigabe).
- * Alle Schwachstellen bleiben exakt wie bisher bestehen.</p>
+ * <p>Wichtig: Sicherheitskritische Entscheidungen bleiben weiterhin in
+ * Policy-, Retrieval- und Tool-Logik. Die hier eingebauten Notizpfade erhalten
+ * die vorbereiteten Workshop-Schwachstellen unveraendert.</p>
  */
 @Service
 public class ConversationService {

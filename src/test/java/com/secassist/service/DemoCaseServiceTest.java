@@ -25,7 +25,8 @@ class DemoCaseServiceTest {
 
     @Test
     void oracleLeaksWithTargetedQuery() {
-        // Gezielte Suchanfrage mit "supply chain" fuehrt zur eingeschraenkten Aggregation
+        // Gezielte Suchanfrage mit "supply chain" fuehrt zu einem plausiblen,
+        // aber leaky Similarity-Hinweis aus dem eingeschraenkten Korpus.
         var similar = service.findSimilarCases("suspicious_supplier_invoice", Role.EMPLOYEE,
                 "Gab es \u00e4hnliche Supply-Chain-Vorf\u00e4lle?");
 
@@ -33,7 +34,10 @@ class DemoCaseServiceTest {
                 .filter(DemoCase::internal)
                 .toList();
         assertThat(restricted).hasSize(1);
-        assertThat(restricted.get(0).description()).contains("supply_chain");
+        assertThat(restricted.get(0).id()).isEqualTo("internal_similarity_signal");
+        assertThat(restricted.get(0).title()).contains("Referenzhinweis");
+        assertThat(restricted.get(0).description()).contains("Themenbereich supply_chain");
+        assertThat(restricted.get(0).description()).contains("Risikoprofil critical");
     }
 
     @Test

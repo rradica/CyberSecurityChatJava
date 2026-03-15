@@ -8,13 +8,29 @@
     }
   },
   "forwardPorts": [8080],
-  "postCreateCommand": "./mvnw dependency:resolve",
+  "portsAttributes": {
+    "8080": {
+      "label": "SecAssist",
+      "onAutoForward": "openPreview"
+    }
+  },
+  "postCreateCommand": "chmod +x ./mvnw && ./mvnw -q -DskipTests dependency:resolve compile",
   "customizations": {
+    "codespaces": {
+      "openFiles": [
+        "README.md",
+        ".vscode/launch.json"
+      ]
+    },
     "vscode": {
       "extensions": [
         "vscjava.vscode-java-pack",
         "vscjava.vscode-spring-boot-dashboard"
-      ]
+      ],
+      "settings": {
+        "java.configuration.updateBuildConfiguration": "automatic",
+        "spring-boot.ls.problem.application-properties.enabled": true
+      }
     }
   }
 }

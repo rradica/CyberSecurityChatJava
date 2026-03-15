@@ -212,13 +212,13 @@ public class ChatOrchestrator {
 
         // Triage assessment: LLM liefert strukturierte TriageAssessment
         if (isNaturalLanguageTriageRequest(actionName)) {
-            List<DocumentChunk> context = resolveContext(role, caseId, "workflow", actionName, session);
+            List<DocumentChunk> context = resolveContext(role, caseId, "workflow", actionName);
             storeContextInSession(session, caseId, context);
             List<String> sources = promptBuilder.extractSourceIds(context);
             return handleTriageAssessment(role, caseId, caseDesc, briefing, actionName, context, sources);
         }
 
-        List<DocumentChunk> context = resolveContext(role, caseId, "workflow", null, session);
+        List<DocumentChunk> context = resolveContext(role, caseId, "workflow", null);
         storeContextInSession(session, caseId, context);
         List<String> sources = promptBuilder.extractSourceIds(context);
 
@@ -409,7 +409,7 @@ public class ChatOrchestrator {
      * Laedt den Kontext fuer den aktuellen Request frisch ueber den RetrievalService.
      */
     private List<DocumentChunk> resolveContext(Role role, String caseId,
-                                              String mode, String query, HttpSession session) {
+                                               String mode, String query) {
         return retrievalService.retrieve(role, caseId, mode, query);
     }
 
@@ -418,7 +418,7 @@ public class ChatOrchestrator {
      * Direkte Tool-Aktionsnamen werden hiervon bewusst ausgeschlossen.
      */
     private boolean isNaturalLanguageTriageRequest(String actionName) {
-        return !policyEngine.canUseTool(Role.SECURITY_ANALYST, actionName);
+        return actionName == null || !TriageAssessment.KNOWN_ACTIONS.contains(actionName);
     }
 
     @SuppressWarnings("unchecked")

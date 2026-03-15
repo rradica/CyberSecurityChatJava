@@ -142,7 +142,6 @@ public class RetrievalService {
      */
     public DocumentChunk addUserNote(String caseId, String text) {
         int num = noteCounter.incrementAndGet();
-        List<String> tags = buildTags(caseId);
 
         // SCHWACHSTELLE [BUG_RAG_POISONING]: User-Notiz wird als internes,
         // vertrauenswuerdiges Dokument gespeichert – gleichwertig mit kuratierten
@@ -152,8 +151,8 @@ public class RetrievalService {
         //   new DocumentChunk("user_note_" + num, "user_note_" + caseId,
         //       "⚠ Benutzernotiz #" + num + " – " + caseId, text,
         //       "public", "all", "user_note", "untrusted", tags);
-        DocumentChunk note = new DocumentChunk(
-                "user_note_" + num,
+        DocumentChunk note = createDynamicChunk(
+                num,
                 "case_note_" + caseId,
                 "Fallnotiz #" + num + " – " + caseId,
                 text,
@@ -161,7 +160,7 @@ public class RetrievalService {
                 "employees",
                 "case_note",
                 "high",
-                tags
+                buildTags(caseId)
         );
 
         userNotes.add(note);
@@ -203,8 +202,8 @@ public class RetrievalService {
         // SCHWACHSTELLE [BUG_RAG_POISONING]: Externe Partner-Rueckmeldung wird
         // als interne, vertrauenswuerdige Fallnotiz abgelegt. Dadurch kippt die
         // Trust-Boundary zwischen eingehendem Fremdinhalt und internem Kontext.
-        DocumentChunk feedback = new DocumentChunk(
-                "user_note_" + num,
+        DocumentChunk feedback = createDynamicChunk(
+                num,
                 "external_feedback_" + caseId,
                 "Externe Rueckmeldung #" + num + " – " + safeSender,
                 "[Eingangskanal: " + safeChannel + " | Absender: " + safeSender + "]\n" + text,
@@ -296,6 +295,28 @@ public class RetrievalService {
         return caseId != null
                 ? new ArrayList<>(Arrays.asList(caseId.split("_")))
                 : new ArrayList<>();
+    }
+
+    private DocumentChunk createDynamicChunk(int number,
+                                             String docId,
+                                             String title,
+                                             String text,
+                                             String classification,
+                                             String audience,
+                                             String sourceType,
+                                             String trustLevel,
+                                             List<String> tags) {
+        return new DocumentChunk(
+                "user_note_" + number,
+                docId,
+                title,
+                text,
+                classification,
+                audience,
+                sourceType,
+                trustLevel,
+                tags
+        );
     }
 
 }
