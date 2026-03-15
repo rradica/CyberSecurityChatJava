@@ -3,10 +3,17 @@ package com.secassist.model;
 import java.util.Set;
 
 /**
- * Ergebnis der Intent-Erkennung aus einer Freitext-Nachricht.
+ * Ergebnisobjekt der Intent- und Fall-Erkennung fuer freie Benutzernachrichten.
  *
- * <p>Wird vom LLM (oder Mock) zurueckgegeben, wenn eine natuerliche
- * Benutzernachricht in eine strukturierte Aktion uebersetzt wird.</p>
+ * <p>Der Record beschreibt, auf welchen Fall sich eine Nachricht vermutlich
+ * bezieht und welcher Arbeitsmodus daraus abgeleitet wurde. Damit bildet er die
+ * Bruecke zwischen freier Sprache und den strukturierten Request-Pfaden der
+ * Anwendung.</p>
+ *
+ * <p>Weil LLM-Ausgaben fehlerhaft oder uneinheitlich sein koennen, enthaelt der
+ * Typ auch Hilfsmethoden fuer Validierung und Bereinigung. Die Fachlogik kann
+ * dadurch mit einem stabileren, vorhersehbaren Objekt weiterarbeiten, statt mit
+ * ungesichertem Freitext.</p>
  *
  * @param caseId  erkannte Fall-ID (z.B. "suspicious_supplier_invoice") oder {@code null}
  * @param intent  erkannte Aktion: chat, triage, handover, similar_cases, evidence

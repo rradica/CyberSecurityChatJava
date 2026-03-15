@@ -17,9 +17,19 @@ import com.secassist.model.DemoCase;
 import com.secassist.model.TriageAssessment;
 
 /**
- * LLM-Service mit echtem OpenAI-API-Aufruf ueber Spring AI.
+ * Konkrete {@link LlmService}-Implementierung auf Basis von Spring AI und OpenAI.
  *
- * <p>Erfordert einen gueltigen {@code OPENAI_API_KEY}.</p>
+ * <p>Die Klasse kapselt alle direkten Modellaufrufe des Systems: normalen Chat,
+ * strukturierte Triage-Bewertungen, challengende Zweitbewertungen und die
+ * Intent-Erkennung fuer den konversationellen Einstiegspfad. Sie haelt damit
+ * die Provider-spezifischen Details von den restlichen Anwendungskomponenten
+ * fern.</p>
+ *
+ * <p>Wichtig fuer die Architektur: Auch wenn diese Klasse Texte und strukturierte
+ * Vorschlaege vom Modell einholt, trifft sie keine Sicherheitsentscheidungen.
+ * Rollenpruefung, Quellenauswahl und Tool-Freigaben bleiben weiterhin in
+ * deterministischem Anwendungscode. Fuer den Betrieb ist ein gueltiger
+ * {@code OPENAI_API_KEY} erforderlich.</p>
  */
 public class OpenAiChatService implements LlmService {
 

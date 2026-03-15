@@ -3,16 +3,23 @@ package com.secassist.model;
 import java.util.Set;
 
 /**
- * Strukturierte Triage-Bewertung eines Falls.
+ * Strukturierte Triage-Bewertung eines Falls als typisiertes Modellobjekt.
  *
- * <p>Ersetzt die fragile Freitext-Erkennung per {@code reply.contains()}.
- * Das LLM (oder der Mock) liefert dieses Objekt direkt, der
- * ChatOrchestrator arbeitet mit den typisierten Feldern.</p>
+ * <p>Der Record ersetzt fragiles Arbeiten mit Freitextmustern durch eine klar
+ * definierte Struktur aus Zusammenfassung, Risikostufe, optionaler Aktion,
+ * Konfidenz und Evidenzbewertung. Dadurch kann die Orchestrierungslogik
+ * deterministisch mit Modell-Ausgaben weiterarbeiten, ohne implizite String-
+ * Konventionen erraten zu muessen.</p>
+ *
+ * <p>Zusaetzlich kapselt der Typ die erlaubten Werte und liefert Methoden fuer
+ * Validierung und Bereinigung. Das ist fuer den Workshop besonders wertvoll,
+ * weil sichtbar bleibt, dass strukturierte LLM-Ausgaben zwar helfen, aber keine
+ * Sicherheitsgrenze an sich darstellen.</p>
  *
  * @param summary             Zusammenfassung der Triage-Analyse
  * @param riskLevel           Risikoeinschaetzung: low, medium, high, critical
  * @param recommendedAction   empfohlene Workflow-Aktion (null = keine)
- * @param confidence          Konfidenz der Empfehlung (0.0 – 1.0)
+ * @param confidence          Konfidenz der Empfehlung (0.0 - 1.0)
  * @param evidenceAssessment  Bewertung der verfuegbaren Evidenz
  */
 public record TriageAssessment(

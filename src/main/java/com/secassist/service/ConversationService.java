@@ -20,17 +20,20 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Konversationsschicht ueber dem ChatOrchestrator.
+ * Konversationsschicht fuer den freien, natuerlichsprachlichen Einstieg in SecAssist.
  *
- * <p>Uebersetzt natuerliche Freitext-Nachrichten in strukturierte
- * {@link ChatRequest}-Objekte. Trackt den aktiven Fall in der Session,
- * sodass Folgefragen zum selben Fall ohne erneute Fallnennung moeglich sind.
- * Fuer Notizen und externe Rueckmeldungen verwaltet die Klasse ausserdem einen
- * kleinen, bewusst direkten Persistenzpfad ueber den {@link RetrievalService}.</p>
+ * <p>Die Klasse nimmt einfache Freitext-Nachrichten aus dem Browser entgegen,
+ * laesst Fall und Intent erkennen, stabilisiert die Erkennung mit
+ * deterministischen Heuristiken und uebersetzt das Ergebnis in strukturierte
+ * {@link ChatRequest}-Objekte fuer den {@link ChatOrchestrator}. Zusaetzlich
+ * verwaltet sie den aktiven Fall in der Session, damit Folgefragen ohne
+ * erneute Fallnennung moeglich bleiben.</p>
  *
- * <p>Wichtig: Sicherheitskritische Entscheidungen bleiben weiterhin in
- * Policy-, Retrieval- und Tool-Logik. Die hier eingebauten Notizpfade erhalten
- * die vorbereiteten Workshop-Schwachstellen unveraendert.</p>
+ * <p>Neben dem eigentlichen Chat-Einstieg kapselt die Klasse auch einen bewusst
+ * direkten Pfad fuer interne Notizen und externe Rueckmeldungen. Genau dadurch
+ * bleibt fuer den Workshop sichtbar, wie schnell Produktivitaetsfunktionen in
+ * Trust-Boundary- oder RAG-Poisoning-Probleme kippen koennen, wenn sie nicht
+ * streng genug von der uebrigen Sicherheitslogik getrennt werden.</p>
  */
 @Service
 public class ConversationService {
@@ -97,7 +100,7 @@ public class ConversationService {
         // Aktiven Case in Session speichern
         session.setAttribute(SESSION_ACTIVE_CASE, caseId);
 
-        // Notiz direkt verarbeiten – ohne Orchestrator
+        // Notiz direkt verarbeiten - ohne Orchestrator
         if (role == Role.CONTRACTOR) {
             return handleAddNote(role, caseId, message);
         }

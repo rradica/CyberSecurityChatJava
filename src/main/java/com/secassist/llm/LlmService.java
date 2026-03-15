@@ -7,9 +7,19 @@ import com.secassist.model.DemoCase;
 import com.secassist.model.TriageAssessment;
 
 /**
- * Abstraktion fuer LLM-Aufrufe.
+ * Abstraktion fuer alle LLM-Aufrufe innerhalb von SecAssist.
  *
- * <p>Implementiert als {@link OpenAiChatService} mit echten OpenAI-API-Aufrufen.</p>
+ * <p>Die Schnittstelle entkoppelt die fachlichen Services von einer konkreten
+ * Modell- oder Provider-Implementierung. Dadurch bleiben
+ * {@code ConversationService}, {@code ChatOrchestrator} und andere Komponenten
+ * auf ihr jeweiliges Verhalten fokussiert, waehrend die eigentliche
+ * Kommunikation mit dem Modell hinter dieser API gekapselt ist.</p>
+ *
+ * <p>Im aktuellen Projektstand wird die Schnittstelle durch
+ * {@link OpenAiChatService} implementiert. Die Default-Methoden liefern kleine,
+ * defensive Fallbacks, damit die uebrigen Komponenten auch dann lesbar und
+ * testbar bleiben, wenn eine spezialisierte Provider-Implementierung einzelne
+ * Faehigkeiten nicht nativ anbietet.</p>
  */
 public interface LlmService {
 

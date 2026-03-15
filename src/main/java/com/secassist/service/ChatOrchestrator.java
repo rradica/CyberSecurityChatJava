@@ -27,7 +27,12 @@ import com.secassist.tools.ToolPolicyDecision;
 import com.secassist.tools.ToolPolicyService;
 
 /**
- * Orchestriert den gesamten Request-Ablauf gemaeß „Berechtigung vor Kontext".
+ * Orchestriert den vollstaendigen Request-Ablauf gemaess "Berechtigung vor Kontext".
+ *
+ * <p>Die Klasse verbindet Policy-Pruefung, Retrieval, Prompt-Aufbau,
+ * Modellaufruf und optionalen Workflow-Pfad zu einem klaren, sequenziellen
+ * Gesamtprozess. Sie ist damit die fachliche Zentrale der Anwendung und macht
+ * sichtbar, in welcher Reihenfolge Sicherheits- und Komfortlogik zusammenspielen.</p>
  *
  * <p>Ablauf:
  * <ol>
@@ -37,6 +42,11 @@ import com.secassist.tools.ToolPolicyService;
  *   <li>Kontext aufbauen (Retrieval)</li>
  *   <li>Text generieren oder Tool-Vorschlag erstellen</li>
  * </ol></p>
+ *
+ * <p>Die Schwachstellen des Workshops werden hier nicht versteckt, sondern in
+ * ihren Auswirkungen sichtbar: zu breite Kontexte, zu grosszuegige
+ * Workflow-Freigaben und manipulierter Fallzustand. Gerade dadurch eignet sich
+ * der Orchestrator gut als Lesepunkt fuer Reviews und Blue-Team-Fixes.</p>
  */
 @Service
 public class ChatOrchestrator {
@@ -222,7 +232,7 @@ public class ChatOrchestrator {
         storeContextInSession(session, caseId, context);
         List<String> sources = promptBuilder.extractSourceIds(context);
 
-        // Direct workflow action – check tool policy
+        // Direct workflow action - check tool policy
         ToolPolicyDecision decision = toolPolicyService.evaluateAccess(role, actionName, context);
         if (!decision.allowed()) {
             List<String> warnings = new ArrayList<>();
@@ -269,7 +279,7 @@ public class ChatOrchestrator {
         String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, briefing, context, "workflow", caseState);
 
         // Strukturierte Triage-Bewertung statt Freitext.
-        // Eine zweite LLM-Pruefung reduziert zufaellige Ausreißer, ohne die
+        // Eine zweite LLM-Pruefung reduziert zufaellige Ausreisser, ohne die
         // Entscheidungshoheit fuer Aktionen aus dem deterministischen Code zu nehmen.
         TriageAssessment assessment = reviewAssessment(
                 systemPrompt,
@@ -460,7 +470,7 @@ public class ChatOrchestrator {
 
     /**
      * Warnt nur, wenn Benutzernotizen mit unangemessen hohem Trust-Level im
-     * Kontext vorhanden sind (Bug 5 – RAG Poisoning).
+     * Kontext vorhanden sind (Bug 5 - RAG Poisoning).
      */
     private List<String> buildElevatedNoteWarnings(List<DocumentChunk> context) {
         if (context == null || context.isEmpty()) {
@@ -544,10 +554,10 @@ public class ChatOrchestrator {
 
     private String describeCase(DemoCase demoCase, CaseBriefing briefing, String caseId) {
         if (briefing != null) {
-            return briefing.title() + " – " + briefing.summary();
+            return briefing.title() + " - " + briefing.summary();
         }
         if (demoCase != null) {
-            return demoCase.title() + " – " + demoCase.description();
+            return demoCase.title() + " - " + demoCase.description();
         }
         return "Unbekannter Fall: " + caseId;
     }

@@ -17,17 +17,20 @@ import com.secassist.model.DemoCase;
 import com.secassist.model.Role;
 
 /**
- * Verwaltet die vorbereiteten Demo-Faelle fuer den Workshop.
+ * Verwaltet den festen Demo-Fallkatalog der Workshop-Anwendung.
  *
- * <p>Aehnliche Faelle werden inklusive redaktierter Zusammenfassungen aus
- * eingeschraenkten Faellen zurueckgegeben, damit alle Benutzer einen Ueberblick
- * ueber die Incident-Landschaft erhalten.</p>
+ * <p>Die Klasse liefert die oeffentlich sichtbaren Demo-Faelle, interne
+ * Vergleichsfaelle fuer Analysten und zusaetzliche Fallbriefings fuer die UI.
+ * Damit bildet sie den fachlichen Einstiegspunkt in die vorbereiteten
+ * Incident-Szenarien und stellt sicher, dass Demos reproduzierbar und ohne
+ * externe Abhaengigkeiten ablaufen.</p>
  *
- * <p>SCHWACHSTELLE [BUG_EXISTENCE_ORACLE]: Fuer Nicht-Analysten kann die
- * Similar-Cases-Suche einen plausibel wirkenden Similarity-Hinweis aus dem
- * eingeschraenkten Korpus zurueckgeben. Dieser Hinweis soll nur die UX
- * verbessern, leaket aber weiterhin Existenz, Themenbereich und Risikoprofil
- * interner Vorfaelle.</p>
+ * <p>Gleichzeitig liegt hier bewusst die Schwachstelle
+ * {@code BUG_EXISTENCE_ORACLE}: Nicht-Analysten koennen ueber Similar-Cases
+ * einen plausiblen Hinweis auf interne Vorfaelle erhalten. Die Klasse ist
+ * deshalb fachlich leicht lesbar aufgebaut, damit der Unterschied zwischen
+ * legitimer Fallhilfe und unerwuenschtem Metadaten-Leak im Workshop gut
+ * nachvollzogen werden kann.</p>
  */
 @Service
 public class DemoCaseService {
@@ -72,9 +75,6 @@ public class DemoCaseService {
                     List.of("incident_postmortem_2024_03"), true)
     );
 
-    public DemoCaseService() {
-    }
-
     /**
      * Gibt die oeffentlich sichtbaren Demo-Faelle zurueck.
      *
@@ -102,12 +102,6 @@ public class DemoCaseService {
 
     /**
      * Liefert ein kurzes, deterministisches Fallbriefing fuer die UI.
-     *
-     * <p>Das Briefing fuehrt Benutzer in den Fall ein, ohne die vorbereiteten
-     * Schwachstellen offenzulegen.</p>
-     *
-     * @param caseId Fall-ID
-     * @return Briefing oder {@code null}, falls der Fall unbekannt ist
      */
     public CaseBriefing getCaseBriefing(String caseId) {
         DemoCase demoCase = findById(caseId);
@@ -154,7 +148,7 @@ public class DemoCaseService {
                             new CaseArtifact("policy_excerpt", "policy_excerpt", "Policy-Auszug", "Ungewoehnliche oder unerwartete Anhaenge sollen nicht direkt geoeffnet werden.")
                     ),
                     List.of(
-                            "Wie sollte der Fall eingeschätzt werden?",
+                            "Wie sollte der Fall eingeschaetzt werden?",
                             "Welche Anzeichen sprechen fuer Malware oder Social Engineering?",
                             "Welche naechsten Schritte sind sinnvoll?"
                     ));
@@ -186,7 +180,7 @@ public class DemoCaseService {
                     List.of(
                             "Die Nachricht appelliert an Zeitdruck und Vertraulichkeit.",
                             "Mehrere Kollegen haben dieselbe oder aehnliche Nachricht gemeldet.",
-                            "Es ist unklar, ob bereits jemand auf Links oder Anhänge reagiert hat."
+                            "Es ist unklar, ob bereits jemand auf Links oder Anhaenge reagiert hat."
                     ),
                     List.of(
                             new CaseArtifact("phishing_mail", "email", "E-Mail-Vorschau", "Die Nachricht fordert eine dringende Zahlung im Namen des CFO an."),
@@ -222,16 +216,6 @@ public class DemoCaseService {
 
     /**
      * Findet aehnliche Faelle zum angegebenen Fall.
-     *
-     * <p>Unterstuetzt eine optionale Suchanfrage, um die Aehnlichkeitssuche
-     * zu verfeinern. Bei Suchanfragen werden auch eingeschraenkte Faelle
-     * in die Keyword-Suche einbezogen, damit Benutzer einen vollstaendigeren
-     * Ueberblick ueber die Incident-Landschaft erhalten.</p>
-     *
-     * @param caseId der aktuelle Fall
-     * @param role   die aktuelle Benutzerrolle
-     * @param query  optionale Suchanfrage fuer erweiterte Aehnlichkeitssuche
-     * @return Liste aehnlicher Faelle
      */
     public List<DemoCase> findSimilarCases(String caseId, Role role, String query) {
         DemoCase currentCase = findById(caseId);
@@ -246,11 +230,10 @@ public class DemoCaseService {
             // Analysten sehen vollstaendige Details interner Faelle
             similar.addAll(INTERNAL_CASES);
         } else if (query != null && !query.isBlank()) {
-            // SCHWACHSTELLE [BUG_EXISTENCE_ORACLE]: Bei Suchanfragen fliesst ein
-            // eingeschraenkter Korpus in die Similarity-Bewertung ein. Statt die
-            // Treffer hart auszublenden, wird ein "harmloser" Korrelationshinweis
-            // fuer die Ergebnisqualitaet erzeugt. Dadurch leaken weiterhin Anzahl,
-            // Themenbereich und Risikoprofil interner Vorfaelle an Nicht-Analysten.
+            // SCHWACHSTELLE [BUG_EXISTENCE_ORACLE]: Suchanfragen beziehen auch den
+            // eingeschraenkten Korpus ein und erzeugen einen redaktierten Hinweis.
+            // FIX: Query nur gegen erlaubte Faelle auswerten und keinen Ersatzhinweis erzeugen.
+            // ERKLAERUNG: Auch ein redaktierter Treffer bestaetigt interne Vorfaelle.
             similar.addAll(redactedSummaries(caseId, currentCase, query));
         }
 

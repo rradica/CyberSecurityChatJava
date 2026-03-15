@@ -1,12 +1,17 @@
 package com.secassist.tools;
 
 /**
- * Ergebnis einer Tool-Zugriffspruefung mit Begruendung.
+ * Ergebnisobjekt fuer eine deterministische Tool-Zugriffspruefung.
  *
- * <p>Liefert neben der Entscheidung (erlaubt/verweigert) auch die Begruendung
- * und – bei evidenzbasierter Pruefung – den berechneten Score und Schwellwert.
- * Diese Informationen werden im Frontend als Audit-/Transparenzinformation
- * angezeigt.</p>
+ * <p>Der Record transportiert nicht nur die nackte Ja-/Nein-Entscheidung,
+ * sondern auch die Begruendung sowie optional Evidenz-Score und Schwellwert.
+ * Dadurch koennen Backend, Tests und Frontend dieselbe Entscheidung mit
+ * identischem Erklaerungskontext auswerten.</p>
+ *
+ * <p>Gerade im Workshop ist diese Transparenz wichtig: Teilnehmerinnen und
+ * Teilnehmer sehen nicht nur, dass eine Aktion erlaubt oder abgelehnt wurde,
+ * sondern auch, ob die Freigabe regulaer oder ueber einen problematischen
+ * Evidenz-Override zustande kam.</p>
  *
  * @param allowed           {@code true}, wenn das Tool ausgefuehrt werden darf
  * @param reason            Begruendung: "role_authorized", "evidence_override",
@@ -30,12 +35,12 @@ public record ToolPolicyDecision(
         return new ToolPolicyDecision(true, "evidence_override", score, threshold);
     }
 
-    /** Zugriff verweigert – Score unter Schwellwert. */
+    /** Zugriff verweigert - Score unter Schwellwert. */
     public static ToolPolicyDecision insufficientEvidence(int score, int threshold) {
         return new ToolPolicyDecision(false, "insufficient_evidence", score, threshold);
     }
 
-    /** Zugriff verweigert – keine Rollenberechtigung, keine Triage-Aktion. */
+    /** Zugriff verweigert - keine Rollenberechtigung, keine Triage-Aktion. */
     public static ToolPolicyDecision denied() {
         return new ToolPolicyDecision(false, "denied", 0, 0);
     }

@@ -195,7 +195,10 @@ src/main/resources/
 | Variable | Beschreibung | Aktueller Stand |
 |----------|--------------|-----------------|
 | `OPENAI_API_KEY` | Key fuer den echten OpenAI-Pfad | aktiv verwendet |
-| `SECASSIST_MOCK_LLM` | Mock-Schalter laut `.env.example` | derzeit **nicht** im Anwendungscode verdrahtet |
+
+Aktueller Ist-Stand: Das Repository enthaelt derzeit **keinen** verdrahteten Mock-LLM-Pfad.
+Die Anwendung ist deshalb fuer LLM-gestuetzte Requests momentan auf `OPENAI_API_KEY`
+angewiesen. Die `.env.example` bildet diesen Ist-Stand bewusst direkt ab.
 
 ## Tests ausfuehren
 

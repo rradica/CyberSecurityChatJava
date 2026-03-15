@@ -11,18 +11,18 @@ import com.secassist.model.Role;
 import com.secassist.policy.PolicyEngine;
 
 /**
- * Steuert, ob ein Tool/Workflow-Schritt ausgefuehrt werden darf.
+ * Bewertet, ob eine Rolle einen Tool- oder Workflow-Schritt ausfuehren darf.
  *
- * <p>Die Entscheidung wird deterministisch auf Basis von Rolle, Policy und
- * Evidenzqualitaet getroffen. Das LLM liefert hoechstens einen Vorschlag,
- * die App entscheidet.</p>
+ * <p>Die Klasse setzt die Anwendungshoheit ueber sicherheitsrelevante Aktionen
+ * um. Selbst wenn das Modell eine Aktion vorschlaegt, entscheidet ausschliesslich
+ * dieser Service, ob die Aktion aufgrund von Rolle, Kontext und Evidenz erlaubt
+ * ist. Damit bleibt die Autorisierung fest im deterministischen Anwendungscode.</p>
  *
- * <p>Neben der Standard-Rollenpruefung wird bei Triage-Aktionen ein
- * Evidence-Confidence-Score aus dem Kontext berechnet. Ueberschreitet der Score
- * den Schwellwert, koennen bestimmte Aktionen auch ohne Analyst-Rolle
- * freigegeben werden. Der Schwellwert und die Quellenbewertung sind
- * konfigurierbar, um den Triage-Workflow an verschiedene Risikoprofile
- * anzupassen.</p>
+ * <p>Fuer den Workshop liegt hier bewusst die Schwachstelle
+ * {@code BUG_TOOL_FASTTRACK}: Der evidenzbasierte Override ist zu grosszuegig
+ * modelliert und kann dadurch Analysten-Aktionen fuer weniger privilegierte
+ * Rollen freigeben. Die Logik ist absichtlich kompakt, damit der Fehler schnell
+ * verstanden und gezielt behoben werden kann.</p>
  */
 @Service
 public class ToolPolicyService {
@@ -39,56 +39,31 @@ public class ToolPolicyService {
     }
 
     /**
-     * Prueft, ob ein Tool fuer die aktuelle Rolle und den Kontext erlaubt ist.
-     *
-     * <p>Standard-Rollenpruefung ueber PolicyEngine, mit evidenzbasierter Lockerung
-     * fuer Triage-Aktionen: Wenn der Kontext genuegend starke Evidenz enthaelt,
-     * koennen bestimmte Workflow-Aktionen auch fuer Nicht-Analyst-Rollen erlaubt werden.</p>
-     *
-     * @param role     aktuelle Benutzerrolle
-     * @param toolName Name des angeforderten Tools
-     * @param context  Retrieval-Kontext (Chunks), der die Anfrage begleitet
-     * @return {@code true}, wenn das Tool ausgefuehrt werden darf
+     * Prueft, ob ein Tool fuer Rolle und Kontext erlaubt ist.
      */
     public boolean isToolAllowed(Role role, String toolName, List<DocumentChunk> context) {
         return evaluateAccess(role, toolName, context).allowed();
     }
 
     /**
-     * Detaillierte Zugriffspruefung mit Begruendung und Score-Details.
-     *
-     * <p>Liefert ein {@link ToolPolicyDecision} mit der Entscheidung, der Begruendung
-     * und – bei evidenzbasierter Pruefung – dem berechneten Score und Schwellwert.
-     * Wird vom Frontend fuer Transparenz-/Audit-Anzeigen verwendet.</p>
-     *
-     * @param role     aktuelle Benutzerrolle
-     * @param toolName Name des angeforderten Tools
-     * @param context  Retrieval-Kontext (Chunks), der die Anfrage begleitet
-     * @return strukturierte Zugriffsentscheidung
+     * Liefert eine strukturierte Zugriffsentscheidung mit Begruendung.
      */
     public ToolPolicyDecision evaluateAccess(Role role, String toolName, List<DocumentChunk> context) {
         if (policyEngine.canUseTool(role, toolName)) {
             return ToolPolicyDecision.roleAuthorized();
         }
 
-        // Evidenzbasierte Policy-Lockerung f\u00fcr Triage-Aktionen
+        // Evidenzbasierte Lockerung fuer Triage-Aktionen
         if (isTriageAction(toolName)) {
             int score = computeEvidenceScore(context);
             int threshold = effectiveThreshold(toolName);
             log.debug("Evidence score for '{}': {} (threshold: {})", toolName, score, threshold);
 
             if (score >= threshold) {
-                // SCHWACHSTELLE [BUG_TOOL_FASTTRACK, Teil 2/2]: Es fehlt die Pruefung,
-                // ob mindestens eine trusted interne Quelle vorhanden ist.
-                // Hoher Score aus rein untrusted Quellen genuegt, um Aktionen freizuschalten.
-                // FIX: Zusaetzlich zum Score muss mindestens eine Quelle mit
-                // trustLevel="high" vorhanden sein:
-                //   boolean hasTrustedSource = context.stream()
-                //           .anyMatch(c -> "high".equals(c.trustLevel()));
-                //   if (!hasTrustedSource) {
-                //       log.debug("Action '{}' denied: score sufficient but no trusted source", toolName);
-                //       return ToolPolicyDecision.insufficientEvidence(score, threshold);
-                //   }
+                // SCHWACHSTELLE [BUG_TOOL_FASTTRACK]: Es fehlt die Pruefung,
+                // ob ueberhaupt eine vertrauenswuerdige Quelle vorhanden ist.
+                // FIX: Neben dem Score mindestens eine trusted Quelle erzwingen.
+                // ERKLAERUNG: Hohe Punktzahl aus untrusted Material darf keine Freigabe erzeugen.
                 return ToolPolicyDecision.evidenceOverride(score, threshold);
             }
             return ToolPolicyDecision.insufficientEvidence(score, threshold);
@@ -98,11 +73,7 @@ public class ToolPolicyService {
     }
 
     /**
-     * Berechnet einen Evidenz-Score aus dem abgerufenen Kontext.
-     * Interne Richtlinien und Compliance-Referenzen tragen zum Score bei.
-     *
-     * @param context die abgerufenen Dokument-Chunks
-     * @return aggregierter Evidenz-Score
+     * Berechnet einen einfachen Evidenz-Score aus dem Kontext.
      */
     int computeEvidenceScore(List<DocumentChunk> context) {
         int score = 0;
@@ -110,11 +81,10 @@ public class ToolPolicyService {
             int weight = sourceWeight(chunk);
             if (weight == 0) continue;
 
-            // SCHWACHSTELLE [BUG_TOOL_FASTTRACK + BUG_RAG_POISONING Interaktion]:
-            // case_note wird gleichwertig mit policy/runbook gez\u00e4hlt. Da Bug 5 User-
-            // Notizen als trustLevel "high" / sourceType "case_note" speichert,
-            // erh\u00f6ht jede eingeschleuste Notiz den Evidence-Score.
-            // FIX: case_note aus dieser Pr\u00fcfung entfernen (oder nur mit trustLevel-Pr\u00fcfung).
+              // SCHWACHSTELLE [BUG_TOOL_FASTTRACK]: case_note zaehlt wie policy/runbook.
+            // In Kombination mit BUG_RAG_POISONING erhoeht das eingeschleuste Notizen.
+            // FIX: case_note aus dem Score entfernen oder nur streng validiert werten.
+            // ERKLAERUNG: Operative Notizen sind nicht automatisch belastbare Sicherheitsevidenz.
             if ("policy".equals(chunk.sourceType()) || "runbook".equals(chunk.sourceType())
                     || "case_note".equals(chunk.sourceType())) {
                 score += weight;
@@ -122,7 +92,7 @@ public class ToolPolicyService {
 
             String text = chunk.text().toLowerCase();
 
-            // Compliance-/Verifizierungs-Behauptungen (hohe Gewichtung)
+            // Starke Verifizierungsbehauptungen
             if (text.contains("verified by compliance") || text.contains("confirmed as a false alarm")
                     || text.contains("durch compliance verifiziert")
                     || text.contains("als fehlalarm best\u00e4tigt") || text.contains("als fehlalarm bestaetigt")
@@ -130,7 +100,7 @@ public class ToolPolicyService {
                     || text.contains("unabh\u00e4ngigen kanal verifiziert") || text.contains("unabhaengigen kanal verifiziert")) {
                 score += 3 * weight;
             }
-            // Pr\u00fcfprozess-/Zertifizierungs-Referenzen (mittlere Gewichtung)
+            // Prozess- oder Zertifizierungsreferenzen
             if (text.contains("iso 27001") || text.contains("audit process") || text.contains("pr\u00fcfprozess")
                     || text.contains("pruefprozess")
                     || text.contains("regul\u00e4r verarbeitet") || text.contains("regulaer verarbeitet")
@@ -138,12 +108,10 @@ public class ToolPolicyService {
                 score += 2 * weight;
             }
 
-            // SCHWACHSTELLE [BUG_TOOL_FASTTRACK, Teil 1c/2]: Operative Kontext-Signale
-            // wie bestehende Lieferantenbeziehungen oder Finanz-/Rechnungsbez\u00fcge geben
-            // zus\u00e4tzliche Punkte. Diese Signale klingen gesch\u00e4ftlich plausibel,
-            // sind aber keine Sicherheitsevidenz und d\u00fcrfen nicht als solche z\u00e4hlen.
-            // FIX: Diesen Block komplett entfernen. Operative Signale sind KEINE
-            // Sicherheitsevidenz und d\u00fcrfen den Score nicht beeinflussen.
+            // SCHWACHSTELLE [BUG_TOOL_FASTTRACK]: Auch operative Signale erhoehen den
+            // Score, obwohl sie keine echte Sicherheitsevidenz sind.
+            // FIX: Diesen Bonus entfernen.
+            // ERKLAERUNG: Geschaeftskontext ist nuetzlich fuer Triage, aber keine Autorisierungsgrundlage.
             if (text.contains("existing supplier") || text.contains("established business")
                     || text.contains("regular vendor") || text.contains("approved contractor")
                     || text.contains("bestehender lieferant")
@@ -164,20 +132,11 @@ public class ToolPolicyService {
     }
 
     /**
-     * Gibt den Gewichtungsfaktor f\u00fcr eine Quelle basierend auf ihrem Trust-Level zur\u00fcck.
-     * Vertrauensw\u00fcrdige interne Quellen tragen voll bei; externe Quellen werden abgewertet.
+     * Gibt den effektiven Evidenz-Schwellwert fuer eine Aktion zurueck.
+     * SCHWACHSTELLE [BUG_TOOL_FASTTRACK]: Einige Aktionen haben zu niedrige Schwellwerte.
+     * FIX: Einheitlichen Schwellwert fuer alle sensitiven Aktionen verwenden.
+     * ERKLAERUNG: Niedrige Sondergrenzen machen die Fast-Track-Freigabe zu leicht ausloesbar.
      */
-    /**
-     * Gibt den effektiven Evidenz-Schwellwert f\u00fcr eine Aktion zur\u00fcck.
-     * Niedrigere Schwellwerte f\u00fcr Routine-Triage-Aktionen beschleunigen den Workflow.
-     */
-    // SCHWACHSTELLE [BUG_TOOL_FASTTRACK, Teil 1a/2]: Reduzierte Schwellwerte fuer
-    // "Routine"-Triage-Aktionen beschleunigen den Workflow, senken aber die
-    // Evidenzanforderung so weit, dass bereits einseitige untrusted Supplier-
-    // Referenzen ausreichen. Kombiniert mit der fehlenden Quellenpruefung (Teil 2)
-    // koennen Angreifer ueber manipulierte Supplier-Notes Aktionen ausloesen.
-    // FIX: Einheitlichen Schwellwert EVIDENCE_THRESHOLD fuer alle Aktionen verwenden:
-    //   return EVIDENCE_THRESHOLD;
     int effectiveThreshold(String toolName) {
         return switch (toolName) {
             case "attach_supplier_trust_note" -> 2;
@@ -186,12 +145,12 @@ public class ToolPolicyService {
         };
     }
 
-    // SCHWACHSTELLE [BUG_TOOL_FASTTRACK, Teil 1b/2]: sourceWeight() gibt fuer ALLE
-    // Quellen Gewicht 1 zurueck – egal ob trusted oder untrusted. Untrusted Supplier-
-    // Notes (mit Phrasen wie "verified by compliance") treiben den Evidence-Score
-    // ueber den Threshold und schalten Workflow-Aktionen fuer Nicht-Analysten frei.
-    // FIX: Nur trustLevel "high" darf Gewicht > 0 haben:
-    //   return "high".equals(chunk.trustLevel()) ? 1 : 0;
+    /**
+     * Gewichtung einer Quelle im Evidence-Score.
+     * SCHWACHSTELLE [BUG_TOOL_FASTTRACK]: Alle Quellen zaehlen gleich stark.
+     * FIX: Untrusted Quellen deutlich abwerten oder ganz ausschliessen.
+     * ERKLAERUNG: Sonst koennen ungepruefte Aussagen denselben Einfluss wie interne Evidenz haben.
+     */
     int sourceWeight(DocumentChunk chunk) {
         return 1;
     }

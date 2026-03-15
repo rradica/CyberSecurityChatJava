@@ -3,10 +3,19 @@ package com.secassist.model;
 import java.util.List;
 
 /**
- * Ein vorbereiteter Dokument-Chunk mit Metadaten.
+ * Reprasentiert einen einzelnen Retrieval-Chunk mit Fach- und Sicherheitsmetadaten.
  *
- * <p>Die Chunks werden beim Appstart aus {@code chunks.json} geladen
- * und bilden die Grundlage fuer die lokale Retrieval-Logik.</p>
+ * <p>Chunks sind die kleinste Retrieval-Einheit von SecAssist. Sie enthalten
+ * nicht nur den eigentlichen Text, sondern auch Klassifikation, Zielgruppe,
+ * Quellentyp, Vertrauensniveau und Tags fuer das einfache Matching. Dadurch
+ * kann die Anwendung Dokumente vor dem Prompt-Aufbau deterministisch filtern und
+ * einordnen.</p>
+ *
+ * <p>Gerade fuer den Workshop ist dieser Typ wichtig, weil an ihm die Trust-
+ * Boundary sichtbar wird: Ein und derselbe Text kann je nach Metadaten eine
+ * kuratierte Richtlinie, eine harmlose Notiz oder ein gefaehrlicher externer
+ * Fremdinhalt sein. Diese Unterschiede muessen im Anwendungscode sauber
+ * beruecksichtigt werden.</p>
  *
  * @param id             eindeutige Chunk-ID
  * @param docId          ID des Ursprungsdokuments

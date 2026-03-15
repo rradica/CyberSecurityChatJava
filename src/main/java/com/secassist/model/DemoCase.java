@@ -3,7 +3,17 @@ package com.secassist.model;
 import java.util.List;
 
 /**
- * Ein vorbereiteter Demo-Fall fuer den Workshop.
+ * Beschreibt einen vorbereiteten Demo-Fall innerhalb des Workshop-Katalogs.
+ *
+ * <p>Ein {@code DemoCase} bildet die fachliche Klammer zwischen UI, Fallbriefing,
+ * Retrieval-Dokumenten und Similar-Cases-Funktion. Er ist damit der kleinste
+ * gemeinsame Nenner, ueber den die Anwendung einen Incident konsistent benennen,
+ * anzeigen und weiterverarbeiten kann.</p>
+ *
+ * <p>Die Felder sind bewusst einfach gehalten: wenige Metadaten, klarer
+ * Sichtbarkeitsstatus und referenzierte Dokument-IDs. Dadurch bleibt die App
+ * fuer Workshop-Teilnehmerinnen und -Teilnehmer schnell lesbar und leicht
+ * erweiterbar.</p>
  *
  * @param id            technische ID (z.B. "suspicious_supplier_invoice")
  * @param title         Anzeigename

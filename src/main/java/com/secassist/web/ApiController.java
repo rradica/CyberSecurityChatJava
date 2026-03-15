@@ -28,9 +28,19 @@ import com.secassist.service.ConversationService;
 import com.secassist.service.DemoCaseService;
 
 /**
- * REST-API fuer die SecAssist-Anwendung.
+ * REST-Controller fuer alle vom Frontend genutzten SecAssist-Endpunkte.
  *
- * <p>Stellt alle Endpunkte bereit, die vom statischen Frontend konsumiert werden.</p>
+ * <p>Die Klasse bildet die HTTP-Oberflaeche der Anwendung und delegiert die
+ * eigentliche Fachlogik bewusst an spezialisierte Services wie
+ * {@link ChatOrchestrator}, {@link ConversationService},
+ * {@link DemoCaseService} und {@link RetrievalService}. Dadurch bleibt die
+ * Web-Schicht schlank, leicht lesbar und gut fuer Reviews geeignet.</p>
+ *
+ * <p>Neben Chat- und Konversationspfaden stellt der Controller auch einfache
+ * Endpunkte fuer Fallauswahl, Notizen, externe Rueckmeldungen und Healthchecks
+ * bereit. Gerade diese Kombination macht den Workshop realistisch, weil der
+ * Chat nicht isoliert, sondern als Teil einer kleinen Anwendung mit klaren
+ * API-Pfaden demonstriert wird.</p>
  */
 @RestController
 @RequestMapping("/api")
@@ -64,7 +74,7 @@ public class ApiController {
     }
 
     /**
-     * Konversationeller Endpunkt – natuerliche Freitext-Eingabe.
+     * Konversationeller Endpunkt - natuerliche Freitext-Eingabe.
      *
      * <p>Akzeptiert nur Rolle und Nachricht. Case und Aktion werden
      * automatisch per LLM-Intent-Erkennung bestimmt.</p>

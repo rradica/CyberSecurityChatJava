@@ -1,11 +1,17 @@
 package com.secassist.model;
 
 /**
- * Kleines, UI-taugliches Artefakt eines Demo-Falls.
+ * Reprasentiert ein einzelnes, im UI sichtbares Artefakt eines Demo-Falls.
  *
- * <p>Artefakte sollen den Fall realistischer wirken lassen und dem Benutzer
- * einen plausiblen Einstieg in die Exploration geben, ohne die vorbereitete
- * Schwachstelle direkt zu verraten.</p>
+ * <p>Artefakte sind kleine, bewusst leicht lesbare Ausschnitte aus einem
+ * Incident-Kontext, zum Beispiel Mail-Vorschauen, Notizen oder Policy-Auszuege.
+ * Sie geben Benutzerinnen und Benutzern einen schnellen Einstieg in den Fall,
+ * ohne dass dafuer bereits ein LLM-Aufruf notwendig ist.</p>
+ *
+ * <p>Im Workshop dienen diese Objekte ausserdem der Prompt-Stabilisierung: Der
+ * sichtbare Fallkontext bleibt ueber UI, Retrieval und Prompting hinweg
+ * konsistent und nachvollziehbar. Dadurch lassen sich spaetere Fehleinschaetzungen
+ * klarer auf Sicherheits- oder Trust-Probleme zurueckfuehren.</p>
  *
  * @param id      technische ID des Artefakts
  * @param type    Typ des Artefakts (z. B. {@code email}, {@code note}, {@code policy_excerpt})

@@ -15,17 +15,26 @@ import com.secassist.model.Role;
 import com.secassist.model.ToolActionResult;
 
 /**
- * Simuliert Workflow-/Tool-Aktionen fuer den Workshop.
+ * Simuliert die sicherheitsrelevanten Workflow-Aktionen der Workshop-Anwendung.
  *
- * <p>Keine echte Infrastruktur wird veraendert. Alle Aktionen werden
- * in einem In-Memory-Audit-Log protokolliert.</p>
+ * <p>Die Klasse fuehrt keine echten Infrastruktur-Aenderungen aus, bildet aber
+ * deren fachliche Wirkung realistisch im Speicher nach. Dadurch koennen
+ * Teilnehmerinnen und Teilnehmer sehen, wie eine falsche Triage- oder
+ * Routing-Entscheidung den Fallzustand veraendert und spaetere Bearbeitung
+ * beeinflusst.</p>
+ *
+ * <p>Zusaetzlich fuehrt der Service ein Audit-Log pro Fall und macht damit
+ * nachvollziehbar, welche Aktion von welcher Rolle ausgelost wurde. Diese
+ * Sichtbarkeit ist fuer den Workshop zentral, weil sich die Auswirkungen von
+ * Schwachstellen nicht nur im Antworttext, sondern auch im persistenten
+ * Anwendungseffekt zeigen sollen.</p>
  */
 @Service
 public class IncidentWorkflowService {
 
     private static final Logger log = LoggerFactory.getLogger(IncidentWorkflowService.class);
 
-    /** Audit-Log: caseId → Liste der ausgefuehrten Aktionen. */
+    /** Audit-Log: caseId -> Liste der ausgefuehrten Aktionen. */
     private final Map<String, List<AuditEntry>> auditLog = new ConcurrentHashMap<>();
 
     /** Aktiver Fallzustand: Incident-Effekte pro Case. */

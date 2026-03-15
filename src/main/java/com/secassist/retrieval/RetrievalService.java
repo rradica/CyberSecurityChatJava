@@ -24,18 +24,20 @@ import com.secassist.model.Role;
 import com.secassist.policy.PolicyEngine;
 
 /**
- * Einfacher, lokaler Retrieval-Service.
+ * Lokaler Retrieval-Service fuer Dokumente, Fallnotizen und externe Rueckmeldungen.
  *
- * <p>Laedt vorbereitete Chunks aus {@code data/chunks.json} und filtert sie
- * nach Policy (Klassifikation, Audience) und einfachem Tag-Matching.</p>
+ * <p>Die Klasse laedt vorbereitete Dokument-Chunks aus der lokalen
+ * Datenbasis, erweitert sie zur Laufzeit um dynamische Fallnotizen und filtert
+ * anschliessend nach Rolle, Zielgruppe und Modus. Damit bildet sie die Bruecke
+ * zwischen statischer Wissensbasis, situativem Fallkontext und der zentralen
+ * Architekturregel "Berechtigung vor Kontext".</p>
  *
- * <p>Reihenfolge (gemaeß „Berechtigung vor Kontext"):
- * <ol>
- *   <li>Policy-Filter (Klassifikation + Audience)</li>
- *   <li>Fallbezogene Relevanz (Tags)</li>
- *   <li>Einfaches Ranking</li>
- *   <li>Begrenzung auf max. Chunks</li>
- * </ol></p>
+ * <p>Im Workshop ist dieser Service besonders wichtig, weil mehrere der
+ * absichtlich eingebauten Schwachstellen genau hier greifbar werden:
+ * fehlerhafte Scope-Erweiterungen, Trust-Boundary-Verletzungen und zu stark
+ * privilegierte dynamische Inhalte. Die Logik bleibt trotzdem bewusst klein und
+ * nachvollziehbar, damit Ursachen und Fixes direkt am Anwendungscode sichtbar
+ * sind.</p>
  */
 @Service
 public class RetrievalService {
@@ -80,25 +82,20 @@ public class RetrievalService {
     }
 
     /**
-     * Ruft relevante Chunks fuer einen bestimmten Kontext ab.
-     *
-     * @param role   aktuelle Benutzerrolle
-     * @param caseId ID des aktiven Falls
-     * @param mode   Modus: "chat", "handover", "evidence"
-     * @param query  optionaler Suchbegriff
-     * @return gefilterte und gerankte Liste von Chunks (max. {@value MAX_CHUNKS})
+     * Ruft relevante Chunks fuer Rolle, Fall und Modus ab.
      */
     public List<DocumentChunk> retrieve(Role role, String caseId, String mode, String query) {
-        // Schritt 1: Relevanzfilter – nur Chunks, die zum Fall oder zur Anfrage passen
-        // Kombiniert statische Chunks und dynamisch hinzugefuegte User-Notizen
+        // Schritt 1: statische Chunks und dynamische Notizen zusammenfuehren
         List<DocumentChunk> relevant = Stream.concat(allChunks.stream(), userNotes.stream())
                 .filter(chunk -> matchesCaseOrQuery(chunk, caseId, query))
                 .collect(Collectors.toCollection(ArrayList::new));
 
-        // Schritt 2: Policy-Filter – Zugriffssteuerung nach Klassifikation und Zielgruppe.
-        // Im Handover-Modus werden Security-Team-Berechtigungen verwendet, da
-        // Uebergabe-Entwuerfe an das Security-Team gerichtet sind und umfassenden
-        // Kontext benoetigen.
+        // Schritt 2: Policy-Filter nach Klassifikation und Zielgruppe
+        // SCHWACHSTELLE [BUG_HANDOVER_SCOPE]: Im Handover-Modus werden fest die
+        // Berechtigungen des Security-Teams verwendet statt der aktuellen Rolle.
+        // FIX: Immer policyEngine.allowedClassifications(role) und
+        // policyEngine.allowedAudiences(role) der aktuellen Rolle verwenden.
+        // ERKLAERUNG: Sonst wird vor dem Kontextaufbau die falsche Berechtigung angesetzt.
         Set<String> allowedClassifications = "handover".equals(mode)
                 ? Set.of("public", "internal", "confidential")
                 : policyEngine.allowedClassifications(role);
@@ -110,7 +107,7 @@ public class RetrievalService {
                 .filter(c -> allowedAudiences.contains(c.audience()))
                 .collect(Collectors.toCollection(ArrayList::new));
 
-        // Schritt 3: Einfaches Ranking – hoeheres Trust-Level bevorzugen
+        // Schritt 3: einfaches Ranking
         relevant.sort(Comparator.comparingInt(this::trustScore).reversed());
 
         // Schritt 4: Begrenzung
@@ -124,37 +121,21 @@ public class RetrievalService {
 
     /**
      * Fuegt eine Benutzernotiz als Chunk hinzu.
-     *
-     * <p>SCHWACHSTELLE [BUG_RAG_POISONING]: Wenn der Bug aktiv ist, wird die Notiz
-     * mit {@code trustLevel: "high"} und {@code classification: "internal"} gespeichert
-     * – gleichwertig mit kuratierten internen Dokumenten. Ein Angreifer kann so
-     * gefaelschte "interne Einschaetzungen" (z.B. angebliche Rechtsabteilung-Bestaetigungen)
-     * in die Wissensdatenbank einschleusen, die bei spaeteren Abfragen neben echten
-     * Policies und Runbooks erscheinen.</p>
-     *
-     * <p>SOLL: Notizen immer als {@code trustLevel: "untrusted"}, {@code sourceType: "user_note"}
-     * speichern, damit sie in getrennten Kontextsektionen erscheinen und die KI
-     * sie als ungeprueften User-Input erkennt.</p>
-     *
-     * @param caseId die Fall-ID, zu der die Notiz gehoert
-     * @param text   der Notiztext
-     * @return der erstellte Chunk
+     * SCHWACHSTELLE [BUG_RAG_POISONING]: Die Notiz wird als interne High-Trust-Quelle gespeichert.
+     * FIX: Notizen als {@code user_note} mit {@code trustLevel=untrusted} speichern.
+     * ERKLAERUNG: Ungepruefter Input darf spaeter nicht wie kuratierte interne Evidenz wirken.
      */
     public DocumentChunk addUserNote(String caseId, String text) {
         int num = noteCounter.incrementAndGet();
 
-        // SCHWACHSTELLE [BUG_RAG_POISONING]: User-Notiz wird als internes,
-        // vertrauenswuerdiges Dokument gespeichert – gleichwertig mit kuratierten
-        // internen Dokumenten. Angreifer koennen so gefaelschte "interne Einschaetzungen"
-        // in die Wissensdatenbank einschleusen.
-        // FIX: Notiz als untrusted/public/user_note speichern:
-        //   new DocumentChunk("user_note_" + num, "user_note_" + caseId,
-        //       "⚠ Benutzernotiz #" + num + " – " + caseId, text,
-        //       "public", "all", "user_note", "untrusted", tags);
+        // SCHWACHSTELLE [BUG_RAG_POISONING]: Benutzernotizen werden wie interne,
+        // vertrauenswuerdige Dokumente behandelt.
+        // FIX: sourceType=user_note, classification=public, trustLevel=untrusted setzen.
+        // ERKLAERUNG: Die Notiz bleibt sichtbar, zaehlt aber nicht als interne Quelle.
         DocumentChunk note = createDynamicChunk(
                 num,
                 "case_note_" + caseId,
-                "Fallnotiz #" + num + " – " + caseId,
+                "Fallnotiz #" + num + " - " + caseId,
                 text,
                 "internal",
                 "employees",
@@ -170,25 +151,10 @@ public class RetrievalService {
     }
 
     /**
-     * Fuegt eine eingehende externe Rueckmeldung als Fallkontext hinzu.
-     *
-     * <p>SCHWACHSTELLE [BUG_RAG_POISONING]: Antworten aus einem externen
-     * Partner-/Reply-Kanal werden wie intern kuratierte Fallnotizen behandelt.
-     * Die Herkunft bleibt zwar im Titel und Text angedeutet, die gespeicherten
-     * Metadaten machen daraus jedoch eine hoch vertrauenswuerdige interne Quelle.
-     * Genau dadurch wirkt der Pfad wie ein realer Trust-Boundary-Fehler statt wie
-     * eine bloesse Selbstmanipulation durch denselben Benutzer.</p>
-     *
-     * <p>SOLL: Externe Rueckmeldungen muessen immer als ungepruefte,
-     * getrennte Quelle gespeichert werden, z. B. mit
-     * {@code classification = public}, {@code sourceType = external_feedback}
-     * und {@code trustLevel = untrusted}.</p>
-     *
-     * @param caseId  die Fall-ID
-     * @param sender  externer Absender
-     * @param channel Eingangskanal der Rueckmeldung
-     * @param text    Rueckmeldungstext
-     * @return der gespeicherte Chunk
+     * Fuegt eine externe Rueckmeldung als Fallkontext hinzu.
+     * SCHWACHSTELLE [BUG_RAG_POISONING]: Externe Rueckmeldungen werden als interne High-Trust-Quelle gespeichert.
+     * FIX: Externe Rueckmeldungen als getrennte, ungepruefte Quelle speichern.
+     * ERKLAERUNG: Ein Partnerkanal ist eine Trust Boundary und keine interne Wissensquelle.
      */
     public DocumentChunk addExternalFeedback(String caseId, String sender, String channel, String text) {
         int num = noteCounter.incrementAndGet();
@@ -199,13 +165,14 @@ public class RetrievalService {
         tags.add("partner");
         tags.add("reply");
 
-        // SCHWACHSTELLE [BUG_RAG_POISONING]: Externe Partner-Rueckmeldung wird
-        // als interne, vertrauenswuerdige Fallnotiz abgelegt. Dadurch kippt die
-        // Trust-Boundary zwischen eingehendem Fremdinhalt und internem Kontext.
+        // SCHWACHSTELLE [BUG_RAG_POISONING]: Externe Rueckmeldungen kippen die
+        // Trust-Boundary und landen als interne, vertrauenswuerdige Fallnotiz.
+        // FIX: external_feedback mit untrusted/public speichern und separat kennzeichnen.
+        // ERKLAERUNG: Fremdinhalt darf im Retrieval nicht denselben Status wie internes Wissen erhalten.
         DocumentChunk feedback = createDynamicChunk(
                 num,
                 "external_feedback_" + caseId,
-                "Externe Rueckmeldung #" + num + " – " + safeSender,
+                "Externe Rueckmeldung #" + num + " - " + safeSender,
                 "[Eingangskanal: " + safeChannel + " | Absender: " + safeSender + "]\n" + text,
                 "internal",
                 "employees",
