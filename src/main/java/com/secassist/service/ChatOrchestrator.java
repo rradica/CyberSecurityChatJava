@@ -84,6 +84,10 @@ public class ChatOrchestrator {
         Role role = Role.fromString(request.role());
         handleRoleChange(session, role);
 
+        if (role == Role.CONTRACTOR) {
+            return ChatResponse.text("Externe Partner koennen in SecAssist nur Partner-Updates zu freigegebenen Faellen senden.");
+        }
+
         // Schritt 2: Aktion bestimmen
         String action = request.action() != null ? request.action() : "chat";
         String caseId = request.caseId();
@@ -175,6 +179,14 @@ public class ChatOrchestrator {
         List<DocumentChunk> context = retrievalService.retrieve(role, caseId, "evidence", null);
 
         StringBuilder sb = new StringBuilder("## Beweise / Quellen\n\n");
+        if (context.isEmpty()) {
+            sb.append("Fuer den aktuellen Fall wurden in diesem Modus keine zusaetzlichen Quellen gefunden. "
+                    + "Pruefen Sie die Rolle, den Fallkontext oder fuegen Sie weitere Artefakte hinzu.\n\n");
+        } else {
+            sb.append("Es wurden ").append(context.size())
+                    .append(" Quelle(n) fuer den aktuellen Fallkontext gefunden.\n\n");
+        }
+
         for (DocumentChunk chunk : context) {
             sb.append("### ").append(chunk.title()).append("\n");
             sb.append("- **Quelle:** ").append(chunk.docId()).append(" (").append(chunk.sourceType()).append(")\n");
@@ -454,14 +466,28 @@ public class ChatOrchestrator {
         if (context == null || context.isEmpty()) {
             return List.of();
         }
+
+        long externalReplies = context.stream()
+                .filter(c -> "case_note".equals(c.sourceType())
+                        && c.docId() != null
+                        && c.docId().startsWith("external_feedback_")
+                        && "high".equals(c.trustLevel()))
+                .count();
+        if (externalReplies > 0) {
+            return List.of("⚠ " + externalReplies
+                    + " externe Rueckmeldung(en) als vertrauenswuerdige interne Quelle im Kontext");
+        }
+
         long highTrustNotes = context.stream()
                 .filter(c -> ("case_note".equals(c.sourceType()) || "user_note".equals(c.sourceType()))
                         && "high".equals(c.trustLevel()))
                 .count();
+
         if (highTrustNotes > 0) {
-            return List.of("\u26A0 " + highTrustNotes
-                    + " Benutzernotiz(en) als vertrauensw\u00fcrdige interne Quelle im Kontext");
+            return List.of("⚠ " + highTrustNotes
+                    + " Benutzernotiz(en) als vertrauenswuerdige interne Quelle im Kontext");
         }
+
         return List.of();
     }
 

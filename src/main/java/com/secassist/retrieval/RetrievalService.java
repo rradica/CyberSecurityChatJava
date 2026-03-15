@@ -142,9 +142,7 @@ public class RetrievalService {
      */
     public DocumentChunk addUserNote(String caseId, String text) {
         int num = noteCounter.incrementAndGet();
-        List<String> tags = caseId != null
-                ? Arrays.asList(caseId.split("_"))
-                : List.of();
+        List<String> tags = buildTags(caseId);
 
         // SCHWACHSTELLE [BUG_RAG_POISONING]: User-Notiz wird als internes,
         // vertrauenswuerdiges Dokument gespeichert – gleichwertig mit kuratierten
@@ -170,6 +168,57 @@ public class RetrievalService {
         log.info("User note added: id={}, trustLevel={}, classification={}",
                 note.id(), note.trustLevel(), note.classification());
         return note;
+    }
+
+    /**
+     * Fuegt eine eingehende externe Rueckmeldung als Fallkontext hinzu.
+     *
+     * <p>SCHWACHSTELLE [BUG_RAG_POISONING]: Antworten aus einem externen
+     * Partner-/Reply-Kanal werden wie intern kuratierte Fallnotizen behandelt.
+     * Die Herkunft bleibt zwar im Titel und Text angedeutet, die gespeicherten
+     * Metadaten machen daraus jedoch eine hoch vertrauenswuerdige interne Quelle.
+     * Genau dadurch wirkt der Pfad wie ein realer Trust-Boundary-Fehler statt wie
+     * eine bloesse Selbstmanipulation durch denselben Benutzer.</p>
+     *
+     * <p>SOLL: Externe Rueckmeldungen muessen immer als ungepruefte,
+     * getrennte Quelle gespeichert werden, z. B. mit
+     * {@code classification = public}, {@code sourceType = external_feedback}
+     * und {@code trustLevel = untrusted}.</p>
+     *
+     * @param caseId  die Fall-ID
+     * @param sender  externer Absender
+     * @param channel Eingangskanal der Rueckmeldung
+     * @param text    Rueckmeldungstext
+     * @return der gespeicherte Chunk
+     */
+    public DocumentChunk addExternalFeedback(String caseId, String sender, String channel, String text) {
+        int num = noteCounter.incrementAndGet();
+        String safeSender = sender != null && !sender.isBlank() ? sender : "External Partner";
+        String safeChannel = channel != null && !channel.isBlank() ? channel : "shared_case_workspace";
+        List<String> tags = new ArrayList<>(buildTags(caseId));
+        tags.add("external");
+        tags.add("partner");
+        tags.add("reply");
+
+        // SCHWACHSTELLE [BUG_RAG_POISONING]: Externe Partner-Rueckmeldung wird
+        // als interne, vertrauenswuerdige Fallnotiz abgelegt. Dadurch kippt die
+        // Trust-Boundary zwischen eingehendem Fremdinhalt und internem Kontext.
+        DocumentChunk feedback = new DocumentChunk(
+                "user_note_" + num,
+                "external_feedback_" + caseId,
+                "Externe Rueckmeldung #" + num + " – " + safeSender,
+                "[Eingangskanal: " + safeChannel + " | Absender: " + safeSender + "]\n" + text,
+                "internal",
+                "employees",
+                "case_note",
+                "high",
+                tags
+        );
+
+        userNotes.add(feedback);
+        log.info("External feedback added: id={}, sender={}, channel={}, trustLevel={}",
+                feedback.id(), safeSender, safeChannel, feedback.trustLevel());
+        return feedback;
     }
 
     /** Entfernt alle dynamisch hinzugefuegten User-Notizen. */
@@ -241,6 +290,12 @@ public class RetrievalService {
         }
         String normalized = word.trim().toLowerCase();
         return normalized.length() >= 4 && !QUERY_STOP_WORDS.contains(normalized);
+    }
+
+    private List<String> buildTags(String caseId) {
+        return caseId != null
+                ? new ArrayList<>(Arrays.asList(caseId.split("_")))
+                : new ArrayList<>();
     }
 
 }

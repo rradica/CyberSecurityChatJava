@@ -19,6 +19,7 @@ import com.secassist.model.ChatResponse;
 import com.secassist.model.ConversationRequest;
 import com.secassist.model.DemoCase;
 import com.secassist.model.DocumentChunk;
+import com.secassist.model.ExternalFeedbackRequest;
 import com.secassist.model.NoteRequest;
 import com.secassist.model.Role;
 import com.secassist.retrieval.RetrievalService;
@@ -110,6 +111,24 @@ public class ApiController {
     @PostMapping("/cases/{caseId}/notes")
     public DocumentChunk addNote(@PathVariable String caseId, @RequestBody NoteRequest request) {
         return retrievalService.addUserNote(caseId, request.text());
+    }
+
+    /**
+     * Simuliert einen kleinen externen Reply-/Partnerkanal fuer einen Fall.
+     *
+     * <p>Der Endpunkt steht fuer eingehende Rueckmeldungen aus einer geteilten
+     * Fallzusammenarbeit, z. B. von Lieferanten, Dienstleistern oder einem
+     * externen Mail-Security-Partner. Er ist bewusst einfach gehalten, damit die
+     * Trust-Boundary im Workshop nachvollziehbar bleibt.</p>
+     *
+     * @param caseId die Fall-ID
+     * @param request Sender, Kanal und Text der externen Rueckmeldung
+     * @return der gespeicherte Chunk
+     */
+    @PostMapping("/cases/{caseId}/external-feedback")
+    public DocumentChunk addExternalFeedback(@PathVariable String caseId,
+                                             @RequestBody ExternalFeedbackRequest request) {
+        return retrievalService.addExternalFeedback(caseId, request.sender(), request.channel(), request.text());
     }
 
     /** Entfernt alle dynamisch hinzugefuegten User-Notizen. */

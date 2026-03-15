@@ -32,7 +32,7 @@ Die aktuelle App-Version bietet:
   - Similar Cases
   - Evidence / Quellenansicht
   - Triage mit moeglicher Workflow-Aktion
-  - Notizen, die in den Retrieval-Kontext einfliessen
+  - interne Fallvermerke und eingehende externe Rueckmeldungen, die in den Retrieval-Kontext einfliessen
 - sichtbare Warnungen, Sensitivitaetskennzeichnung pro Nachricht und optional einblendbare **Meta-Informationen** je Nachricht
 - kurze, deterministische Fallbriefings zur besseren Exploration und stabileren Antworten
 
@@ -76,7 +76,7 @@ Dann im Browser: **http://localhost:8080**
 
 | Rolle | Aktueller Zugriff |
 |-------|-------------------|
-| `contractor` | Oeffentliche Dokumente, normaler Chat, Evidence-Ansicht; kein Handover, keine Similar Cases |
+| `contractor` | Nur freigegebene Fallsicht und Versand von Partner-Updates in den externen Rueckkanal |
 | `employee` | Oeffentliche + interne Dokumente, Chat, Handover-Entwuerfe, Similar Cases |
 | `security_analyst` | Voller Zugriff inkl. vertraulicher Inhalte und direkter Workflow-Aktionen |
 
@@ -110,6 +110,7 @@ Daneben existieren interne Vergleichsfaelle, die nur im Analysten-Kontext voll s
 - `GET /api/cases`
 - `GET /api/roles`
 - `POST /api/cases/{caseId}/notes`
+- `POST /api/cases/{caseId}/external-feedback`
 - `DELETE /api/notes`
 - `GET /api/health`
 
@@ -138,15 +139,15 @@ Der evidenzbasierte Tool-Gate bewertet untrusted Lieferantenquellen, operative K
 **Ort:** `ToolPolicyService.evaluateAccess()` / `computeEvidenceScore()` / `effectiveThreshold()` / `sourceWeight()`
 
 ### 5. RAG_POISONING (Datenintegritaet)
-Benutzernotizen werden als interne, vertrauenswuerdige Chunks gespeichert und spaeter wie kuratierte Quellen behandelt.
+Eingehende externe Rueckmeldungen aus einem freigegebenen Partner-/Reply-Kanal werden als interne, vertrauenswuerdige Chunks gespeichert und spaeter wie kuratierte Quellen behandelt.
 
-**Ort:** `RetrievalService.addUserNote()`
+**Ort:** `RetrievalService.addExternalFeedback()` / `RetrievalService.addUserNote()`
 
 ### Kill Chain (TRUST_MERGE + TOOL_FASTTRACK)
 Bug 3 liefert der KI nicht sauber getrennte Quellen, Bug 4 erlaubt anschliessend die zu grosszuegige Ausfuehrung einer vorgeschlagenen Aktion. Zusammen kann ein `employee` einen Sicherheitsfall als False Positive herunterstufen.
 
 ### Erweiterte Kill Chain (RAG_POISONING + TRUST_MERGE + TOOL_FASTTRACK)
-Bug 5 schleust gefaelschte "interne" Notizen ein, Bug 3 mischt sie in den generierten Kontext, Bug 4 erhoeht dadurch den Evidence-Score. Dadurch kann selbst ein spaeterer Fix an Bug 3 allein unzureichend sein.
+Bug 5 schleust gefaelschte "interne" Partner-Rueckmeldungen ein, Bug 3 mischt sie in den generierten Kontext, Bug 4 erhoeht dadurch den Evidence-Score. Dadurch kann selbst ein spaeterer Fix an Bug 3 allein unzureichend sein.
 
 ## Realistischer Incident-Case
 

@@ -113,16 +113,16 @@ public class DemoCaseService {
             case "suspicious_supplier_invoice" -> new CaseBriefing(
                     caseId,
                     demoCase.title(),
-                    "Das Finance-Team erhielt eine Lieferantenrechnung von ACME Corp mit geaenderten Bankdaten und einem Hinweis auf interne Compliance-Freigaben.",
+                    "Das Finance-Team erhielt eine Lieferantenrechnung von ACME Corp mit geaenderten Bankdaten und einer weitergeleiteten Lieferanten-Rueckmeldung, die auf bereits erfolgte Compliance-Freigaben verweist.",
                     "Finanzabteilung",
                     List.of(
                             "Die angebliche Lieferanten-Mail fordert eine Aktualisierung der Bankverbindung an.",
-                            "Die Nachricht verweist auf bestehende Geschaeftsbeziehungen und Compliance-Pruefungen.",
+                            "Eine zusaetzliche Lieferanten-Rueckmeldung behauptet, dass Bankdaten und Sicherheitspruefung bereits abgestimmt wurden.",
                             "Bisher liegt keine unabhaengige Verifikation ueber den registrierten Lieferantenkontakt vor."
                     ),
                     List.of(
                             new CaseArtifact("supplier_mail", "email", "Lieferanten-Mail", "ACME fordert neue Kontodaten fuer eine offene Rechnung und verweist auf interne Freigaben."),
-                            new CaseArtifact("supplier_note", "note", "Supplier Note", "Eine Zusatznotiz beschreibt bestehende Lieferantenbeziehungen und behauptete Sicherheitspruefungen."),
+                            new CaseArtifact("supplier_note", "note", "Weitergeleitete Lieferanten-Rueckmeldung", "Ein angeblicher Lieferantenhinweis aus einem Portal- oder Mail-Thread beschreibt bestehende Beziehungen und behauptete Sicherheitspruefungen."),
                             new CaseArtifact("policy_excerpt", "policy_excerpt", "Policy-Auszug", "Zahlungsdaten duerfen nicht allein auf Basis einer E-Mail geaendert werden.")
                     ),
                     List.of(
@@ -133,16 +133,18 @@ public class DemoCaseService {
             case "strange_attachment" -> new CaseBriefing(
                     caseId,
                     demoCase.title(),
-                    "Ein Mitarbeiter meldet eine E-Mail mit unerwartetem .iso-Anhang von einem bekannten Kontakt. Der Absender wirkt plausibel, der Anhang war aber nicht angekuendigt.",
+                    "Ein Mitarbeiter meldet eine E-Mail mit unerwartetem .iso-Anhang von einem bekannten Kontakt. Fuer die Dateipruefung wurde zusaetzlich ein externer Mail-Security-Partner in einen freigegebenen Rueckkanal eingebunden.",
                     "Operations / Mitarbeiter-Support",
                     List.of(
                             "Der Kontaktname ist bekannt, der Anhang jedoch ungewoehnlich.",
                             "Es gibt bislang keine technische Analyse des .iso-Anhangs.",
-                            "Der Mitarbeiter hat den Anhang vorerst nicht geoeffnet."
+                            "Der Mitarbeiter hat den Anhang vorerst nicht geoeffnet und wartet auf eine verifizierte Rueckmeldung ueber einen unabhaengigen Kanal.",
+                            "Eingehende Partner-Antworten aus dem freigegebenen Rueckkanal werden im Fallkontext sichtbar."
                     ),
                     List.of(
                             new CaseArtifact("mail_preview", "email", "E-Mail-Vorschau", "Kurze Nachricht mit Verweis auf einen unerwarteten .iso-Anhang ohne weitere Erklaerung."),
-                            new CaseArtifact("attachment_hint", "attachment_hint", "Anhang-Hinweis", "Der Dateityp ist fuer normale Korrespondenz ungewoehnlich und sollte gesondert geprueft werden."),
+                            new CaseArtifact("attachment_hint", "attachment_hint", "Anhang-Hinweis", "Der Dateityp ist fuer normale Korrespondenz ungewoehnlich. Eingehenende Entwarnungen oder Zusatzinfos sollten unabhaengig verifiziert werden."),
+                            new CaseArtifact("partner_channel", "note", "Externer Rueckkanal", "Ein freigegebener Collaboration-Kanal nimmt Partner-Antworten zur Dateipruefung auf und ordnet sie dem Fall zu."),
                             new CaseArtifact("policy_excerpt", "policy_excerpt", "Policy-Auszug", "Ungewoehnliche oder unerwartete Anhaenge sollen nicht direkt geoeffnet werden.")
                     ),
                     List.of(

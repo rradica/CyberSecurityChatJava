@@ -230,13 +230,93 @@ class ConversationServiceTest {
         verify(orchestrator, never()).processRequest(any(), any());
 
         // Antwort enthaelt Bestaetigung mit Vertrauensstufe
-        assertThat(response.reply()).contains("Notiz zu");
+        assertThat(response.reply()).contains("Rueckmeldung zu");
         assertThat(response.reply()).contains("suspicious_supplier_invoice");
         assertThat(response.reply()).contains("gespeichert");
         assertThat(response.reply()).contains("Vertrauensstufe");
 
         // Kein SecurityContext fuer Notiz-Antworten (reduzierte UI-Komplexitaet)
         assertThat(response.securityContext()).isNull();
+    }
+
+    @Test
+    void rueckmeldungPrefixIsDeterministicallyMappedToAddNote() {
+        when(llmService.detectIntent(anyString(), any()))
+                .thenReturn(new ConversationIntent(
+                        "suspicious_supplier_invoice", "chat", "llm did not classify as note"));
+
+        var noteChunk = new DocumentChunk(
+                "user_note_2", "user_note_suspicious_supplier_invoice",
+                "Benutzernotiz #2", "Rueckmeldung: Weitergeleitete Einschaetzung von ACME",
+                "public", "all", "user_note", "untrusted", List.of());
+        when(retrievalService.addUserNote(eq("suspicious_supplier_invoice"), anyString()))
+                .thenReturn(noteChunk);
+
+        var req = new ConversationRequest("employee",
+                "Rueckmeldung: Weitergeleitete Einschaetzung von ACME zum Fall");
+        var response = service.processMessage(req, session);
+
+        verify(retrievalService).addUserNote(
+                eq("suspicious_supplier_invoice"),
+                eq("Rueckmeldung: Weitergeleitete Einschaetzung von ACME zum Fall"));
+        verify(orchestrator, never()).processRequest(any(), any());
+        assertThat(response.reply()).contains("Rueckmeldung zu");
+    }
+
+    @Test
+    void contractorPartnerUpdateUsesExternalFeedbackPath() {
+        when(llmService.detectIntent(anyString(), any()))
+                .thenReturn(new ConversationIntent(
+                        "strange_attachment", "chat", "llm did not classify as note"));
+
+        var noteChunk = new DocumentChunk(
+                "user_note_9", "external_feedback_strange_attachment",
+                "Externe Rueckmeldung #9 – Mail Security Partner",
+                "[Eingangskanal: shared_case_workspace | Absender: Mail Security Partner]\nPartner-Update: Datei ist geprueft",
+                "internal", "employees", "case_note", "high", List.of());
+        when(retrievalService.addExternalFeedback(eq("strange_attachment"), anyString(), anyString(), anyString()))
+                .thenReturn(noteChunk);
+
+        var req = new ConversationRequest("contractor",
+                "Partner-Update: Die Datei wurde bereits freigegeben", "strange_attachment");
+        var response = service.processMessage(req, session);
+
+        verify(retrievalService).addExternalFeedback(
+                eq("strange_attachment"),
+                eq("External Collaboration Partner"),
+                eq("shared_case_workspace"),
+                eq("Partner-Update: Die Datei wurde bereits freigegeben"));
+        verify(retrievalService, never()).addUserNote(anyString(), anyString());
+        verify(orchestrator, never()).processRequest(any(), any());
+        assertThat(response.reply()).contains("Externe Rueckmeldung zu");
+        assertThat(response.warnings()).anyMatch(w -> w.contains("Externe Rueckmeldung"));
+    }
+
+    @Test
+    void contractorIsAlwaysRoutedToExternalFeedbackInsteadOfChat() {
+        when(llmService.detectIntent(anyString(), any()))
+                .thenReturn(new ConversationIntent(
+                        "strange_attachment", "chat", "generic contractor message"));
+
+        var noteChunk = new DocumentChunk(
+                "user_note_10", "external_feedback_strange_attachment",
+                "Externe Rueckmeldung #10 – External Collaboration Partner",
+                "[Eingangskanal: shared_case_workspace | Absender: External Collaboration Partner]\nBitte Anhang erneut pruefen",
+                "internal", "employees", "case_note", "high", List.of());
+        when(retrievalService.addExternalFeedback(eq("strange_attachment"), anyString(), anyString(), anyString()))
+                .thenReturn(noteChunk);
+
+        var req = new ConversationRequest("contractor",
+                "Bitte Anhang erneut pruefen", "strange_attachment");
+        var response = service.processMessage(req, session);
+
+        verify(retrievalService).addExternalFeedback(
+                eq("strange_attachment"),
+                eq("External Collaboration Partner"),
+                eq("shared_case_workspace"),
+                eq("Bitte Anhang erneut pruefen"));
+        verify(orchestrator, never()).processRequest(any(), any());
+        assertThat(response.reply()).contains("Externe Rueckmeldung zu");
     }
 
     @Test

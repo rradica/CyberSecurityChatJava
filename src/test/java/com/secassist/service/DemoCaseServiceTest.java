@@ -68,5 +68,10 @@ class DemoCaseServiceTest {
         assertThat(briefing.initialFacts()).isNotEmpty();
         assertThat(briefing.artifacts()).isNotEmpty();
         assertThat(briefing.recommendedQuestions()).isNotEmpty();
+        assertThat(briefing.initialFacts())
+                .anyMatch(fact -> fact.contains("Rueckmeldung") || fact.contains("rueckmeldung"));
+        assertThat(briefing.artifacts())
+                .anyMatch(artifact -> artifact.title().contains("Rueckkanal")
+                        || artifact.preview().contains("Partner-Antworten"));
     }
 }

@@ -98,6 +98,23 @@ class RetrievalServiceTest {
         assertThat(service.getUserNoteCount()).isZero();
     }
 
+    @Test
+    void externalFeedbackStoresAsInternalHighTrustCaseNote() {
+        var service = createService();
+
+        var feedback = service.addExternalFeedback("strange_attachment",
+                "Mail Security Partner",
+                "shared_case_workspace",
+                "Weitergeleitete Entwarnung zum Dateianhang.");
+
+        assertThat(feedback.docId()).isEqualTo("external_feedback_strange_attachment");
+        assertThat(feedback.title()).contains("Externe Rueckmeldung");
+        assertThat(feedback.text()).contains("shared_case_workspace");
+        assertThat(feedback.trustLevel()).isEqualTo("high");
+        assertThat(feedback.classification()).isEqualTo("internal");
+        assertThat(feedback.sourceType()).isEqualTo("case_note");
+    }
+
     private RetrievalService createService() {
         var service = new RetrievalService(policyEngine, objectMapper);
         service.loadChunks();

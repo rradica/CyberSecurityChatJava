@@ -12,6 +12,7 @@ import com.secassist.model.ConversationIntent;
 import com.secassist.model.ConversationRequest;
 import com.secassist.model.DemoCase;
 import com.secassist.model.DocumentChunk;
+import com.secassist.model.Role;
 import com.secassist.retrieval.RetrievalService;
 
 import java.util.ArrayList;
@@ -65,6 +66,7 @@ public class ConversationService {
      * @return die Chatbot-Antwort
      */
     public ChatResponse processMessage(ConversationRequest request, HttpSession session) {
+        Role role = Role.fromString(request.role());
         String message = request.message();
         if (message == null || message.isBlank()) {
             return ChatResponse.text("Bitte beschreiben Sie einen Sicherheitsvorfall oder stellen Sie eine Frage.");
@@ -94,8 +96,12 @@ public class ConversationService {
         session.setAttribute(SESSION_ACTIVE_CASE, caseId);
 
         // Notiz direkt verarbeiten – ohne Orchestrator
+        if (role == Role.CONTRACTOR) {
+            return handleAddNote(role, caseId, message);
+        }
+
         if ("add_note".equals(intent.intent())) {
-            return handleAddNote(caseId, message);
+            return handleAddNote(role, caseId, message);
         }
 
         // Intent auf ChatRequest-Action mappen
@@ -152,7 +158,9 @@ public class ConversationService {
         }
 
         String intent = detected.intent();
-        if (containsAny(lower, "notiz:", "vermerke", "zusatzinfo", "bitte notieren")) {
+        if (containsAny(lower, "notiz:", "rueckmeldung:", "partner-update:", "partner update:",
+                "vermerke", "zusatzinfo", "bitte notieren", "weitergeleitete rueckmeldung",
+                "eingegangene rueckmeldung", "dienstleister-update:")) {
             intent = "add_note";
         } else if (containsAny(lower, "aehnliche faelle", "aehnliche vorfaelle", "in der vergangenheit", "fruehere vorfaelle", "similar")) {
             intent = "similar_cases";
@@ -226,21 +234,30 @@ public class ConversationService {
      * Verarbeitet eine Notiz-Nachricht: speichert den Text als User-Note
      * ueber den RetrievalService und gibt eine Bestaetigung zurueck.
      */
-    private ChatResponse handleAddNote(String caseId, String noteText) {
-        DocumentChunk note = retrievalService.addUserNote(caseId, noteText);
+    private ChatResponse handleAddNote(Role role, String caseId, String noteText) {
+        boolean externalFeedback = role == Role.CONTRACTOR;
+        DocumentChunk note = externalFeedback
+                ? retrievalService.addExternalFeedback(caseId,
+                        "External Collaboration Partner",
+                        "shared_case_workspace",
+                        noteText)
+                : retrievalService.addUserNote(caseId, noteText);
         log.debug("Note added via chat flow: id={}, caseId={}", note.id(), caseId);
 
         String trustLabel = translateTrust(note.trustLevel());
         String classLabel = translateClassification(note.classification());
-
-        String reply = "Notiz zu **" + caseId + "** gespeichert."
+        String reply = (externalFeedback
+                ? "Externe Rueckmeldung zu **" + caseId + "** uebernommen."
+                : "Rueckmeldung zu **" + caseId + "** gespeichert.")
                 + "\n**Vertrauensstufe:** " + trustLabel
                 + " | **Klassifizierung:** " + classLabel;
 
         List<String> warnings = new ArrayList<>();
         if ("high".equals(note.trustLevel())
                 && ("case_note".equals(note.sourceType()) || "user_note".equals(note.sourceType()))) {
-            warnings.add("\u26A0 Benutzernotiz als vertrauensw\u00fcrdige interne Quelle gespeichert");
+            warnings.add(externalFeedback
+                    ? "⚠ Externe Rueckmeldung als vertrauenswuerdige interne Quelle gespeichert"
+                    : "⚠ Benutzernotiz als vertrauenswuerdige interne Quelle gespeichert");
         }
 
         return new ChatResponse(reply, List.of(), null, warnings, null);

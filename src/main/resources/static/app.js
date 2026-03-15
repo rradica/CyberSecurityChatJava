@@ -6,7 +6,9 @@ const state = {
     activeCaseBriefing: null,
     availableCases: [],
     currentView: 'cases',
-    messageCounter: 0
+    messageCounter: 0,
+    messageBuffers: {},
+    activeBufferKey: null
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -22,12 +24,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     roleSelect.addEventListener('change', () => {
+        persistCurrentMessages();
         updateRolePresentation();
         renderCaseInbox();
         if (state.activeCaseId) {
             renderActiveCaseSummary();
             renderChatHeader();
-            newConversation();
+            renderActionChips();
+            restoreMessagesForActiveContext();
         }
     });
 
@@ -63,7 +67,7 @@ function updateRolePresentation() {
         },
         contractor: {
             title: 'Fuer Sie freigegebene Faelle',
-            description: 'Diese Faelle wurden fuer Ihre aktuelle Mitarbeit freigegeben. Waehrend der Bearbeitung sehen Sie nur die vorgesehenen Informationen.'
+            description: 'Diese Faelle wurden fuer Ihre aktuelle Mitarbeit freigegeben. Sie koennen dazu externe Status- und Verifikationsrueckmeldungen in den freigegebenen Fallkanal einstellen.'
         }
     };
 
@@ -148,8 +152,11 @@ function renderQueueMetrics() {
 }
 
 async function openCase(caseId) {
+    persistCurrentMessages();
+
     if (caseId === state.activeCaseId && state.activeCaseBriefing) {
         switchView('chat');
+        restoreMessagesForActiveContext();
         return;
     }
 
@@ -162,7 +169,13 @@ async function openCase(caseId) {
     renderChatHeader();
     renderActionChips();
     switchView('chat');
-    newConversation();
+
+    const targetKey = getMessageBufferKey();
+    if (hasBufferedMessages(targetKey)) {
+        restoreMessagesForActiveContext();
+    } else {
+        newConversation();
+    }
 }
 
 function returnToInbox() {
@@ -218,14 +231,17 @@ function renderActiveCaseSummary() {
 
 function renderActionChips() {
     const container = document.getElementById('actionChips');
-    const actions = [
-        { key: 'chat', label: 'Fall analysieren' },
-        { key: 'evidence', label: 'Quellen anzeigen' },
-        { key: 'similar_cases', label: 'Aehnliche Faelle' },
-        { key: 'handover', label: 'Uebergabe vorbereiten' },
-        { key: 'workflow', label: 'Triage neu bewerten' },
-        { key: 'note', label: 'Notiz erfassen' }
-    ];
+    const role = document.getElementById('roleSelect').value;
+    const actions = role === 'contractor'
+        ? [{ key: 'note', label: 'Partner-Update senden' }]
+        : [
+            { key: 'chat', label: 'Fall analysieren' },
+            { key: 'evidence', label: 'Quellen anzeigen' },
+            { key: 'similar_cases', label: 'Aehnliche Faelle' },
+            { key: 'handover', label: 'Uebergabe vorbereiten' },
+            { key: 'workflow', label: 'Triage neu bewerten' },
+            { key: 'note', label: 'Rueckmeldung erfassen' }
+        ];
 
     container.innerHTML = '';
     for (const action of actions) {
@@ -248,6 +264,8 @@ function renderChatHeader() {
     const title = document.getElementById('chatTitle');
     const subtitle = document.getElementById('chatSubtitle');
     const badge = document.getElementById('caseSensitivityBadge');
+    const input = document.getElementById('chatInput');
+    const role = document.getElementById('roleSelect').value;
 
     if (!state.activeCaseBriefing) {
         title.textContent = 'Bitte zuerst einen Fall auswaehlen';
@@ -259,9 +277,14 @@ function renderChatHeader() {
     }
 
     title.textContent = state.activeCaseBriefing.title;
-    subtitle.textContent = `${state.activeCaseBriefing.department} · Chat zur laufenden Fallbearbeitung`;
+    subtitle.textContent = role === 'contractor'
+        ? `${state.activeCaseBriefing.department} · Externer Rueckkanal fuer Partner-Updates`
+        : `${state.activeCaseBriefing.department} · Chat zur laufenden Fallbearbeitung`;
     badge.className = `sensitivity-badge sensitivity-${severityToSensitivity(getActiveCaseSeverity())}`;
     badge.textContent = `Fallstufe: ${translateSeverity(getActiveCaseSeverity())}`;
+    input.placeholder = role === 'contractor'
+        ? 'Partner-Update zum ausgewaehlten Fall senden...'
+        : 'Frage zum ausgewaehlten Fall stellen oder Einschaetzung anfordern...';
     setComposerEnabled(true);
 }
 
@@ -271,10 +294,14 @@ function setComposerEnabled(enabled) {
     renderActionChips();
 }
 
-function newConversation() {
+function newConversation(options = {}) {
+    const { preserveNotes = false } = options;
+    clearActiveBuffer();
     const messages = document.getElementById('messages');
     messages.innerHTML = '';
-    fetch(`${API}/notes`, { method: 'DELETE' }).catch(() => {});
+    if (!preserveNotes) {
+        fetch(`${API}/notes`, { method: 'DELETE' }).catch(() => {});
+    }
     if (state.activeCaseBriefing) {
         showGreeting();
     }
@@ -376,7 +403,9 @@ function prefillNote() {
         return;
     }
     const input = document.getElementById('chatInput');
-    input.value = 'Notiz: ';
+    input.value = document.getElementById('roleSelect').value === 'contractor'
+        ? 'Partner-Update: '
+        : 'Rueckmeldung: ';
     autoResizeInput();
     input.focus();
 }
@@ -552,6 +581,65 @@ function appendMessageCard({ type, sender, text, sensitivity, meta, extraNodes =
 
     container.appendChild(article);
     scrollToBottom();
+}
+
+function getMessageBufferKey() {
+    const role = document.getElementById('roleSelect')?.value || 'employee';
+    const caseId = state.activeCaseId || 'no-case';
+    return `${role}::${caseId}`;
+}
+
+function ensureMessageBuffer(key) {
+    if (!state.messageBuffers[key]) {
+        state.messageBuffers[key] = document.createElement('div');
+    }
+    return state.messageBuffers[key];
+}
+
+function persistCurrentMessages() {
+    const messages = document.getElementById('messages');
+    if (!messages) {
+        return;
+    }
+
+    const key = state.activeBufferKey || getMessageBufferKey();
+    const buffer = ensureMessageBuffer(key);
+    while (messages.firstChild) {
+        buffer.appendChild(messages.firstChild);
+    }
+}
+
+function restoreMessagesForActiveContext() {
+    const messages = document.getElementById('messages');
+    if (!messages) {
+        return;
+    }
+
+    const key = getMessageBufferKey();
+    state.activeBufferKey = key;
+    const buffer = ensureMessageBuffer(key);
+    messages.innerHTML = '';
+
+    while (buffer.firstChild) {
+        messages.appendChild(buffer.firstChild);
+    }
+
+    if (!messages.childElementCount && state.activeCaseBriefing) {
+        showGreeting();
+    } else {
+        scrollToBottom();
+    }
+}
+
+function hasBufferedMessages(key) {
+    const buffer = state.messageBuffers[key];
+    return !!buffer && buffer.childElementCount > 0;
+}
+
+function clearActiveBuffer() {
+    const key = getMessageBufferKey();
+    state.messageBuffers[key] = document.createElement('div');
+    state.activeBufferKey = key;
 }
 
 function renderMetaPanel(meta) {
@@ -755,7 +843,7 @@ function translateAction(action) {
         similar_cases: 'Aehnliche Faelle',
         evidence: 'Quellenansicht',
         workflow: 'Workflow',
-        add_note: 'Notiz'
+        add_note: 'Rueckmeldung'
     }[action] || action;
 }
 
