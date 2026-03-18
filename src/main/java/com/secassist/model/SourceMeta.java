@@ -18,11 +18,17 @@ package com.secassist.model;
  * @param trustLevel     Vertrauensstufe: high, medium, low, untrusted
  * @param sourceType     Quelltyp: policy, runbook, supplier_note, user_note, case_note, ...
  * @param classification Klassifizierung: public, internal, confidential
+ * @param origin         fachliche Herkunft, z. B. internal_document, supplier_input, external_feedback
+ * @param includedBy     warum die Quelle in den aktuellen Kontext gelangte
+ * @param influence      grobe Einordnung ihres Gewichts im sichtbaren Arbeitskontext
  */
 public record SourceMeta(
         String docId,
         String title,
         String trustLevel,
         String sourceType,
-        String classification
+        String classification,
+        String origin,
+        String includedBy,
+        String influence
 ) {}

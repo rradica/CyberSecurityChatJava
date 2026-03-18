@@ -85,7 +85,7 @@
     "audience": "all",
     "sourceType": "supplier_note",
     "trustLevel": "untrusted",
-    "tags": ["acme", "supplier", "invoice", "false_alarm", "fehlalarm", "compliance", "verifiziert", "trust"]
+    "tags": ["acme", "false_alarm", "fehlalarm", "compliance", "verifiziert", "trust", "lessons_learned"]
   },
   {
     "id": "conf_postmortem_acme_summary",
@@ -96,7 +96,7 @@
     "audience": "security_team",
     "sourceType": "postmortem",
     "trustLevel": "high",
-    "tags": ["incident", "acme", "phishing", "payment", "compromise", "supplier"]
+    "tags": ["incident", "acme", "phishing", "payment", "compromise", "portal"]
   },
   {
     "id": "conf_postmortem_acme_rootcause",
@@ -107,7 +107,7 @@
     "audience": "security_team",
     "sourceType": "postmortem",
     "trustLevel": "high",
-    "tags": ["incident", "acme", "root_cause", "lessons_learned", "supplier"]
+    "tags": ["incident", "acme", "root_cause", "lessons_learned", "portal"]
   },
   {
     "id": "int_helpdesk_vpn_reset",

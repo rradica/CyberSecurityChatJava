@@ -5,12 +5,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.secassist.model.CaseState;
+import com.secassist.model.DocumentChunk;
 import com.secassist.model.Role;
 import com.secassist.model.ToolActionResult;
 
@@ -49,6 +51,17 @@ public class IncidentWorkflowService {
      * @return Ergebnis der Aktion
      */
     public ToolActionResult executeAction(String caseId, String action, Role actor) {
+        return executeAction(caseId, action, actor, List.of(), "manual_role_path");
+    }
+
+    /**
+     * Fuehrt eine simulierte Workflow-Aktion mit zusaetzlichem Entscheidungskontext aus.
+     */
+    public ToolActionResult executeAction(String caseId,
+                                          String action,
+                                          Role actor,
+                                          List<DocumentChunk> context,
+                                          String decisionPath) {
         ToolActionResult result = switch (action) {
             case "mark_case_likely_false_positive" -> ToolActionResult.executed(action,
                     "Fall '" + caseId + "' als wahrscheinliches False Positive markiert. "
@@ -73,14 +86,18 @@ public class IncidentWorkflowService {
                     "Unbekannte Aktion: " + action);
         };
 
+        List<String> evidence = summarizeEvidence(context);
+        String rationale = buildRationale(action, actor, decisionPath, evidence);
+
         // Audit-Log schreiben
         auditLog.computeIfAbsent(caseId, k -> new ArrayList<>())
-                .add(new AuditEntry(Instant.now(), actor, action, result.executed()));
+                .add(new AuditEntry(Instant.now(), actor, action, result.executed(), decisionPath, rationale, evidence));
 
         // Incident-Effekt: Fallzustand aktualisieren
         if (result.executed()) {
-            caseStates.merge(caseId, CaseState.initial().withActionApplied(action),
-                    (existing, incoming) -> existing.withActionApplied(action));
+            caseStates.merge(caseId,
+                    CaseState.initial().withActionApplied(action, actor.name().toLowerCase(), rationale, evidence),
+                    (existing, incoming) -> existing.withActionApplied(action, actor.name().toLowerCase(), rationale, evidence));
         }
 
         log.info("Workflow action '{}' on case '{}' by {}: {} | state: {}",
@@ -109,13 +126,49 @@ public class IncidentWorkflowService {
         return auditLog.getOrDefault(caseId, List.of());
     }
 
+    private List<String> summarizeEvidence(List<DocumentChunk> context) {
+        if (context == null || context.isEmpty()) {
+            return List.of();
+        }
+        return context.stream()
+                .limit(4)
+                .map(chunk -> chunk.title() + " [" + chunk.sourceType() + ", trust=" + chunk.trustLevel() + "]")
+                .collect(Collectors.toList());
+    }
+
+    private String buildRationale(String action,
+                                  Role actor,
+                                  String decisionPath,
+                                  List<String> evidence) {
+        String evidenceText = evidence.isEmpty()
+                ? "ohne zusaetzliche sichtbare Evidenzliste"
+                : "unter Rueckgriff auf " + evidence.size() + " eingeblendete Kontextquelle(n)";
+        return switch (decisionPath) {
+            case "evidence_override" -> "Beschleunigte Triage-Freigabe fuer " + actor.name().toLowerCase()
+                    + " " + evidenceText + ".";
+            case "role_authorized" -> "Regulaere Rollenfreigabe fuer " + actor.name().toLowerCase()
+                    + " " + evidenceText + ".";
+            default -> "Workflow-Aktion " + action + " durch " + actor.name().toLowerCase()
+                    + " " + evidenceText + ".";
+        };
+    }
+
     /**
      * Ein Eintrag im Audit-Log.
      *
-     * @param timestamp Zeitpunkt der Aktion
-     * @param actor     Rolle des Ausfuehrenden
-     * @param action    Name der Aktion
-     * @param executed  ob die Aktion ausgefuehrt wurde
+     * @param timestamp    Zeitpunkt der Aktion
+     * @param actor        Rolle des Ausfuehrenden
+     * @param action       Name der Aktion
+     * @param executed     ob die Aktion ausgefuehrt wurde
+     * @param decisionPath technischer Freigabepfad
+     * @param rationale    fachlich lesbare Kurzbegruendung
+     * @param evidence     kompakte Evidenzstichworte
      */
-    public record AuditEntry(Instant timestamp, Role actor, String action, boolean executed) {}
+    public record AuditEntry(Instant timestamp,
+                             Role actor,
+                             String action,
+                             boolean executed,
+                             String decisionPath,
+                             String rationale,
+                             List<String> evidence) {}
 }

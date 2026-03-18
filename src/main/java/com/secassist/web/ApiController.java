@@ -28,6 +28,7 @@ import com.secassist.service.ChatOrchestrator;
 import com.secassist.service.ConversationService;
 import com.secassist.service.DemoCaseService;
 import com.secassist.tools.IncidentWorkflowService;
+import com.secassist.tools.IncidentWorkflowService.AuditEntry;
 
 /**
  * REST-Controller fuer alle vom Frontend genutzten SecAssist-Endpunkte.
@@ -157,6 +158,12 @@ public class ApiController {
     @GetMapping("/cases/{caseId}/state")
     public CaseState getCaseState(@PathVariable String caseId) {
         return workflowService.getCaseState(caseId);
+    }
+
+    /** Gibt das Audit-Journal der sichtbaren Workflow-Ereignisse fuer einen Fall zurueck. */
+    @GetMapping("/cases/{caseId}/audit")
+    public List<AuditEntry> getCaseAudit(@PathVariable String caseId) {
+        return workflowService.getAuditLog(caseId);
     }
 
     /** Healthcheck-Endpunkt. */

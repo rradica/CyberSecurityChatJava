@@ -19,15 +19,23 @@ import java.util.List;
  * @param action           ausgefuehrte Aktion (chat, triage, handover, ...)
  * @param caseId           zugeordnete Fall-ID (oder null)
  * @param retrievedSources Metadaten der verwendeten Retrieval-Quellen
+ * @param decisionPath     neutrale Einordnung des Entscheidungswegs
+ * @param decisionSummary  kurze fachliche Zusammenfassung des Entscheidungswegs
+ * @param evidenceScore    optionaler Evidenz-Score bei Workflow-Freigaben
+ * @param evidenceThreshold optionaler Schwellwert bei Workflow-Freigaben
  */
 public record SecurityContext(
         String role,
         String action,
         String caseId,
-        List<SourceMeta> retrievedSources
+        List<SourceMeta> retrievedSources,
+        String decisionPath,
+        String decisionSummary,
+        Integer evidenceScore,
+        Integer evidenceThreshold
 ) {
     /** Kontext ohne Quellen (z.B. fuer Systemantworten). */
     public static SecurityContext of(String role, String action, String caseId) {
-        return new SecurityContext(role, action, caseId, List.of());
+        return new SecurityContext(role, action, caseId, List.of(), null, null, null, null);
     }
 }

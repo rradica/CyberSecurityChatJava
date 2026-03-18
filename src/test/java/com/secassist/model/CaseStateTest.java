@@ -25,6 +25,8 @@ class CaseStateTest {
         assertThat(state.hasActiveEffects()).isTrue();
         assertThat(state.escalationSuppressed()).isTrue();
         assertThat(state.priorityLow()).isFalse();
+        assertThat(state.queue()).isEqualTo("deferred_triage");
+        assertThat(state.reviewStatus()).isEqualTo("likely_false_positive");
     }
 
     @Test
@@ -34,6 +36,7 @@ class CaseStateTest {
 
         assertThat(state.priorityLow()).isTrue();
         assertThat(state.escalationSuppressed()).isFalse();
+        assertThat(state.priority()).isEqualTo("low");
     }
 
     @Test
@@ -42,6 +45,7 @@ class CaseStateTest {
                 .withActionApplied("route_case_to_finance_queue");
 
         assertThat(state.routedToFinance()).isTrue();
+        assertThat(state.queue()).isEqualTo("finance_queue");
     }
 
     @Test
@@ -50,6 +54,7 @@ class CaseStateTest {
                 .withActionApplied("attach_supplier_trust_note");
 
         assertThat(state.trustNoteAttached()).isTrue();
+        assertThat(state.reviewStatus()).isEqualTo("supplier_trust_attached");
     }
 
     @Test
@@ -69,5 +74,7 @@ class CaseStateTest {
                 .withActionApplied("create_handover_draft");
 
         assertThat(state.hasActiveEffects()).isFalse();
+        assertThat(state.reviewStatus()).isEqualTo("handover_prepared");
+        assertThat(state.lastAction()).isEqualTo("create_handover_draft");
     }
 }

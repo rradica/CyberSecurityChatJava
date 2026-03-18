@@ -274,12 +274,12 @@ public class DemoCaseService {
 
         return List.of(new DemoCase(
                 "internal_similarity_signal",
-                "Eingeschraenkter Referenzhinweis",
-                "Die Similar-Cases-Suche hat " + count
-                        + " eingeschraenkten Praezedenzfall/Praezedenzfaelle im Themenbereich "
-                        + types + " mit Risikoprofil " + maxSeverity
-                        + " gefunden." + damageInfo
-                        + " Vollsicht erfordert die security_analyst-Rolle.",
+                "Korrelationssignal aus eingeschraenktem Praezedenzkorpus",
+                "Die Similar-Cases-Suche meldet fuer diesen Fall ein internes Korrelationssignal: "
+                        + count + " passende Praezedenzspur(en) im Themenbereich " + types
+                        + ", Kritikalitaet " + maxSeverity
+                        + ", Abgleich ueber eingeschraenkten Praezedenzkorpus." + damageInfo
+                        + " Detailsicht bleibt auf die security_analyst-Rolle begrenzt.",
                 "correlation_hint",
                 maxSeverity,
                 List.of(),

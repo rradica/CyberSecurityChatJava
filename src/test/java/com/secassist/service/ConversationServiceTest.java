@@ -289,7 +289,8 @@ class ConversationServiceTest {
         verify(retrievalService, never()).addUserNote(anyString(), anyString());
         verify(orchestrator, never()).processRequest(any(), any());
         assertThat(response.reply()).contains("Externe Rueckmeldung zu");
-        assertThat(response.warnings()).anyMatch(w -> w.contains("Externe Rueckmeldung"));
+        assertThat(response.reply()).contains("spaetere Analyse");
+        assertThat(response.warnings()).isEmpty();
     }
 
     @Test

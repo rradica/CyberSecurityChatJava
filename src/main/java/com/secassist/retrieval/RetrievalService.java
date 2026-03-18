@@ -91,15 +91,17 @@ public class RetrievalService {
                 .collect(Collectors.toCollection(ArrayList::new));
 
         // Schritt 2: Policy-Filter nach Klassifikation und Zielgruppe
-        // SCHWACHSTELLE [BUG_HANDOVER_SCOPE]: Im Handover-Modus werden fest die
-        // Berechtigungen des Security-Teams verwendet statt der aktuellen Rolle.
+        // SCHWACHSTELLE [BUG_HANDOVER_SCOPE]: Bei gezielten historischen Rueckfragen
+        // im Handover-Modus werden fest die Berechtigungen des Security-Teams
+        // verwendet statt der aktuellen Rolle.
         // FIX: Immer policyEngine.allowedClassifications(role) und
         // policyEngine.allowedAudiences(role) der aktuellen Rolle verwenden.
         // ERKLAERUNG: Sonst wird vor dem Kontextaufbau die falsche Berechtigung angesetzt.
-        Set<String> allowedClassifications = "handover".equals(mode)
+        boolean expandedHandoverScope = "handover".equals(mode) && requestsHistoricalLessons(query);
+        Set<String> allowedClassifications = expandedHandoverScope
                 ? Set.of("public", "internal", "confidential")
                 : policyEngine.allowedClassifications(role);
-        Set<String> allowedAudiences = "handover".equals(mode)
+        Set<String> allowedAudiences = expandedHandoverScope
                 ? Set.of("all", "employees", "security_team")
                 : policyEngine.allowedAudiences(role);
         relevant = relevant.stream()
@@ -212,6 +214,12 @@ public class RetrievalService {
                     break;
                 }
             }
+
+            if (!caseMatch
+                    && caseId.contains("supplier")
+                    && "supplier_note".equals(chunk.sourceType())) {
+                caseMatch = true;
+            }
         }
 
         boolean queryMatch = false;
@@ -238,6 +246,20 @@ public class RetrievalService {
         }
         // Fallback: alle Chunks als potenziell relevant betrachten
         return caseId == null || caseId.isBlank();
+    }
+
+    private boolean requestsHistoricalLessons(String query) {
+        if (query == null || query.isBlank()) {
+            return false;
+        }
+        String normalized = query.toLowerCase();
+        return normalized.contains("lessons learned")
+                || normalized.contains("lessons learned")
+                || normalized.contains("frueher")
+                || normalized.contains("vorfaell")
+                || normalized.contains("postmortem")
+                || normalized.contains("histor")
+                || normalized.contains("acme");
     }
 
     private int trustScore(DocumentChunk chunk) {

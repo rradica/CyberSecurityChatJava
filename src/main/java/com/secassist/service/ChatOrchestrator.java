@@ -1,7 +1,9 @@
 package com.secassist.service;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import jakarta.servlet.http.HttpSession;
@@ -138,7 +140,15 @@ public class ChatOrchestrator {
 
         List<String> warnings = new ArrayList<>(buildCaseStateWarnings(caseState));
         warnings.addAll(buildTrustMergeWarnings(context));
-        SecurityContext ctx = buildSecurityContext(role, "chat", caseId, context);
+        SecurityContext ctx = buildSecurityContext(
+                role,
+                "chat",
+                caseId,
+                context,
+                "policy_filtered_context",
+                "Kontext wurde nach Rolle, Fall und Modus zusammengestellt.",
+                null,
+                null);
         return new ChatResponse(reply, sources, null, warnings, ctx);
     }
 
@@ -158,12 +168,25 @@ public class ChatOrchestrator {
         String reply = llmService.chat(systemPrompt, "Erstelle einen Sicherheits-\u00dcbergabe-Entwurf f\u00fcr diesen Fall.");
         List<String> sources = promptBuilder.extractSourceIds(context);
 
-        ToolActionResult toolResult = workflowService.executeAction(caseId, "create_handover_draft", role);
+        ToolActionResult toolResult = workflowService.executeAction(
+                caseId,
+                "create_handover_draft",
+                role,
+                context,
+                "role_authorized");
 
         List<String> warnings = new ArrayList<>(buildCaseStateWarnings(caseState));
         warnings.addAll(buildClassificationViolationWarnings(role, context));
         warnings.addAll(buildTrustMergeWarnings(context));
-        SecurityContext ctx = buildSecurityContext(role, "handover", caseId, context);
+        SecurityContext ctx = buildSecurityContext(
+                role,
+                "handover",
+                caseId,
+                context,
+                "role_authorized",
+                "Handover wurde ueber regulaere Rollenfreigabe vorbereitet.",
+                null,
+                null);
         return new ChatResponse(reply, sources, toolResult, warnings, ctx);
     }
 
@@ -188,7 +211,15 @@ public class ChatOrchestrator {
         CaseState caseState = workflowService.getCaseState(caseId);
         List<String> warnings = new ArrayList<>(buildCaseStateWarnings(caseState));
         warnings.addAll(buildOracleLeakWarnings(role, similar));
-        SecurityContext ctx = SecurityContext.of(role.name().toLowerCase(), "similar_cases", caseId);
+        SecurityContext ctx = new SecurityContext(
+                role.name().toLowerCase(),
+                "similar_cases",
+                caseId,
+                List.of(),
+                "similarity_lookup",
+                "Aehnliche Faelle wurden aus dem freigegebenen Fallkatalog und moeglichen Korrelationssignalen zusammengestellt.",
+                null,
+                null);
         return new ChatResponse(sb.toString(), List.of(), null, warnings, ctx);
     }
 
@@ -216,7 +247,15 @@ public class ChatOrchestrator {
 
         // Incident-Effekt: Fallzustand auch im Evidence-Pfad sichtbar
         CaseState caseState = workflowService.getCaseState(caseId);
-        SecurityContext ctx = buildSecurityContext(role, "evidence", caseId, context);
+        SecurityContext ctx = buildSecurityContext(
+                role,
+                "evidence",
+                caseId,
+                context,
+                "policy_filtered_context",
+                "Evidence-Ansicht listet die aktuell fuer Rolle und Fall freigegebenen Quellen.",
+                null,
+                null);
         return new ChatResponse(sb.toString(), sources, null, buildCaseStateWarnings(caseState), ctx);
     }
 
@@ -229,13 +268,13 @@ public class ChatOrchestrator {
 
         // Triage assessment: LLM liefert strukturierte TriageAssessment
         if (isNaturalLanguageTriageRequest(actionName)) {
-            List<DocumentChunk> context = resolveContext(role, caseId, "workflow", actionName);
+            List<DocumentChunk> context = resolveWorkflowContext(role, caseId, actionName, session);
             storeContextInSession(session, caseId, context);
             List<String> sources = promptBuilder.extractSourceIds(context);
             return handleTriageAssessment(role, caseId, caseDesc, briefing, actionName, context, sources);
         }
 
-        List<DocumentChunk> context = resolveContext(role, caseId, "workflow", null);
+        List<DocumentChunk> context = resolveWorkflowContext(role, caseId, null, session);
         storeContextInSession(session, caseId, context);
         List<String> sources = promptBuilder.extractSourceIds(context);
 
@@ -246,14 +285,22 @@ public class ChatOrchestrator {
             warnings.add("\u26D4 Zugriff verweigert: Ihre Rolle (" + role
                     + ") ist nicht berechtigt, '" + actionName + "' auszuf\u00fchren."
                     + formatDecisionDetail(decision));
-            SecurityContext ctx = buildSecurityContext(role, "workflow", caseId, context);
+            SecurityContext ctx = buildSecurityContext(
+                    role,
+                    "workflow",
+                    caseId,
+                    context,
+                    decision.reason(),
+                    buildDecisionSummary(actionName, decision),
+                    nullableScore(decision),
+                    nullableThreshold(decision));
             return new ChatResponse(
                     "Zugriff verweigert: Ihre Rolle (" + role
                     + ") ist nicht berechtigt, '" + actionName + "' auszuf\u00fchren.",
                     sources, null, warnings, ctx);
         }
 
-        ToolActionResult result = workflowService.executeAction(caseId, actionName, role);
+        ToolActionResult result = workflowService.executeAction(caseId, actionName, role, context, decision.reason());
 
         CaseState caseState = workflowService.getCaseState(caseId);
         String systemPrompt = promptBuilder.buildSystemPrompt(role, caseDesc, briefing, context, "workflow", caseState);
@@ -266,7 +313,15 @@ public class ChatOrchestrator {
         warnings.addAll(buildElevatedNoteWarnings(context));
         warnings.addAll(buildTrustMergeWarnings(context));
 
-        SecurityContext ctx = buildSecurityContext(role, "workflow", caseId, context);
+        SecurityContext ctx = buildSecurityContext(
+                role,
+                "workflow",
+                caseId,
+                context,
+                decision.reason(),
+                buildDecisionSummary(actionName, decision),
+                nullableScore(decision),
+                nullableThreshold(decision));
         return new ChatResponse(reply, sources, result, warnings, ctx);
     }
 
@@ -295,7 +350,15 @@ public class ChatOrchestrator {
                 llmService.assessTriage(systemPrompt, caseDesc));
         String reply = formatTriageReply(assessment);
 
-        SecurityContext ctx = buildSecurityContext(role, "triage", caseId, context);
+        SecurityContext ctx = buildSecurityContext(
+                role,
+                "triage",
+                caseId,
+                context,
+                "triage_assessment",
+                "Triage-Einschaetzung wurde auf Basis des aktuellen Rollen- und Retrieval-Kontexts erstellt.",
+                null,
+                null);
 
         // Defensive Pruefung: Nur bekannte, gueltige Aktionen weiterverarbeiten
         if (assessment.hasValidAction()) {
@@ -303,7 +366,12 @@ public class ChatOrchestrator {
             ToolPolicyDecision decision = toolPolicyService.evaluateAccess(role, suggestedAction, context);
 
             if (decision.allowed()) {
-                ToolActionResult result = workflowService.executeAction(caseId, suggestedAction, role);
+                ToolActionResult result = workflowService.executeAction(
+                        caseId,
+                        suggestedAction,
+                        role,
+                        context,
+                        decision.reason());
 
                 // Incident-Effekt: aktualisierter Zustand nach Aktion
                 CaseState updatedState = workflowService.getCaseState(caseId);
@@ -311,14 +379,32 @@ public class ChatOrchestrator {
                 warnings.addAll(buildAccessDecisionWarnings(role, suggestedAction, decision, context));
                 warnings.addAll(buildElevatedNoteWarnings(context));
                 warnings.addAll(buildTrustMergeWarnings(context));
-                return new ChatResponse(reply, sources, result, warnings, ctx);
+                SecurityContext decidedContext = buildSecurityContext(
+                        role,
+                        "triage",
+                        caseId,
+                        context,
+                        decision.reason(),
+                        buildDecisionSummary(suggestedAction, decision),
+                        nullableScore(decision),
+                        nullableThreshold(decision));
+                return new ChatResponse(reply, sources, result, warnings, decidedContext);
             }
 
             List<String> warnings = new ArrayList<>();
             warnings.add("\u26D4 Zugriff verweigert: Die vorgeschlagene Aktion '"
                     + suggestedAction + "' erfordert erh\u00f6hte Berechtigungen."
                     + formatDecisionDetail(decision));
-            return new ChatResponse(reply, sources, null, warnings, ctx);
+            SecurityContext deniedContext = buildSecurityContext(
+                    role,
+                    "triage",
+                    caseId,
+                    context,
+                    decision.reason(),
+                    buildDecisionSummary(suggestedAction, decision),
+                    nullableScore(decision),
+                    nullableThreshold(decision));
+            return new ChatResponse(reply, sources, null, warnings, deniedContext);
         }
 
         return new ChatResponse(reply, sources, null, List.of(), ctx);
@@ -433,6 +519,47 @@ public class ChatOrchestrator {
     }
 
     /**
+     * Baut fuer Workflow-Pfade einen kleinen "working context" auf.
+     *
+     * <p>Plausible Produktlogik: Nach einer vorangegangenen Analyse arbeitet die
+     * App mit dem zuletzt sichtbaren Arbeitskontext weiter, statt fuer jede
+     * Folgetriage bei null zu beginnen. Genau dieses Verhalten macht mehrstufige
+     * Ausnutzungspfade realistischer und weniger button-getrieben.</p>
+     */
+    @SuppressWarnings("unchecked")
+    private List<DocumentChunk> resolveWorkflowContext(Role role,
+                                                       String caseId,
+                                                       String query,
+                                                       HttpSession session) {
+        List<DocumentChunk> freshContext = resolveContext(role, caseId, "workflow", query);
+        List<DocumentChunk> previousContext = List.of();
+        Object storedCaseId = session.getAttribute(SESSION_LAST_CASE_ID);
+        Object storedContext = session.getAttribute(SESSION_LAST_CONTEXT);
+        if (caseId != null
+                && caseId.equals(storedCaseId)
+                && storedContext instanceof List<?> storedList) {
+            previousContext = (List<DocumentChunk>) storedList;
+        }
+        return mergeContexts(previousContext, freshContext);
+    }
+
+    private List<DocumentChunk> mergeContexts(List<DocumentChunk> primary,
+                                              List<DocumentChunk> secondary) {
+        Map<String, DocumentChunk> merged = new LinkedHashMap<>();
+        if (primary != null) {
+            for (DocumentChunk chunk : primary) {
+                merged.put(chunk.id(), chunk);
+            }
+        }
+        if (secondary != null) {
+            for (DocumentChunk chunk : secondary) {
+                merged.putIfAbsent(chunk.id(), chunk);
+            }
+        }
+        return new ArrayList<>(merged.values());
+    }
+
+    /**
      * Erkennt natuerliche Triage-Anfragen aus der Konversations-API.
      * Direkte Tool-Aktionsnamen werden hiervon bewusst ausgeschlossen.
      */
@@ -457,7 +584,7 @@ public class ChatOrchestrator {
         session.setAttribute(SESSION_LAST_CASE_ID, caseId);
     }
 
-    // --- Violation Detection (Workshop-Sichtbarkeit) ---
+    // --- Produktnahe Hinweiserzeugung ---
 
     /**
      * Erkennt Klassifizierungsverletzungen: Chunks mit zu hoher Klassifizierung
@@ -474,19 +601,13 @@ public class ChatOrchestrator {
         if (violations.isEmpty()) {
             return List.of();
         }
-        StringBuilder sb = new StringBuilder();
-        sb.append("\uD83D\uDD34 KLASSIFIZIERUNGSVERLETZUNG: ")
-          .append(violations.size())
-          .append(" Quelle(n) mit zu hoher Klassifizierung an ")
-          .append(role == Role.EMPLOYEE ? "Mitarbeiter" : "Externer")
-          .append("-Rolle ausgeliefert.");
-        for (DocumentChunk v : violations) {
-            sb.append(" [").append(v.id())
-              .append(" (Klassifizierung: ").append(v.classification())
-              .append(", Zielgruppe: ").append(v.audience()).append(")]");
-        }
-        sb.append(" Erlaubt fuer diese Rolle: ").append(String.join(", ", allowed)).append(".");
-        return List.of(sb.toString());
+        String sources = violations.stream()
+                .map(DocumentChunk::title)
+                .limit(3)
+                .reduce((left, right) -> left + ", " + right)
+                .orElse("eingeschraenkte Quelle");
+        return List.of("Arbeitsnotiz: Der Handover greift auf Material oberhalb der ueblichen Sichtgrenze dieser Rolle zu ("
+                + sources + ").");
     }
 
     /**
@@ -502,9 +623,7 @@ public class ChatOrchestrator {
         if (!hasSignal) {
             return List.of();
         }
-        return List.of("\uD83D\uDFE0 METADATEN-LEAK: Die Aehnliche-Faelle-Suche hat interne "
-                + "Vorfaelle bestaetigt, die fuer Ihre Rolle nicht sichtbar sein sollten. "
-                + "Allein die Existenzbestaetigung ist eine Informationspreisgabe.");
+        return List.of("Arbeitsnotiz: Die Similarity-Konfidenz wurde durch ein Korrelationssignal aus eingeschraenktem Praezedenzkorpus beeinflusst.");
     }
 
     /**
@@ -526,11 +645,7 @@ public class ChatOrchestrator {
         if (trusted == 0 || untrusted == 0) {
             return List.of();
         }
-        return List.of("\uD83D\uDFE0 TRUST-GRENZE AUFGEHOBEN: "
-                + untrusted + " nicht verifizierte Quelle(n) (trustLevel=untrusted) "
-                + "mit " + trusted + " vertrauenswuerdigen internen Quelle(n) "
-                + "als einheitliche Bewertung zusammengefuehrt. "
-                + "Das LLM kann den Unterschied nicht erkennen.");
+        return List.of("Kontext-Hinweis: Kuratierte interne Guidance und ungepruefte Fremdaussagen wurden gemeinsam in die Bewertung eingeblendet. Ergebnisse nur mit Verifikationsvorbehalt verwenden.");
     }
 
     /**
@@ -551,22 +666,15 @@ public class ChatOrchestrator {
         if (!"evidence_override".equals(decision.reason())) {
             return List.of();
         }
-        String roleName = switch (role) {
-            case EMPLOYEE -> "Mitarbeiter";
-            case CONTRACTOR -> "Externer";
-            case SECURITY_ANALYST -> "Security-Analyst";
-        };
-
         StringBuilder sb = new StringBuilder();
-        sb.append("\uD83D\uDD34 RECHTE-ESKALATION: Analysten-Aktion '")
-          .append(action).append("' fuer ").append(roleName)
-          .append("-Rolle ueber Evidenz-Score freigegeben (Score: ")
+        sb.append("Arbeitsjournal: Aktion '")
+          .append(action).append("' wurde ueber eine beschleunigte evidenzbasierte Freigabe vorbereitet (Score: ")
           .append(decision.evidenceScore()).append(", Schwellwert: ")
           .append(decision.evidenceThreshold())
-          .append("). Keine Pruefung, ob die Evidenz aus vertrauenswuerdigen Quellen stammt.");
+          .append(").");
 
         if (!context.isEmpty()) {
-            sb.append(" Beteiligte Quellen:");
+            sb.append(" Kontextimpulse:");
             for (DocumentChunk c : context) {
                 if ("policy".equals(c.sourceType()) || "runbook".equals(c.sourceType())
                         || "case_note".equals(c.sourceType()) || "supplier_note".equals(c.sourceType())) {
@@ -594,8 +702,7 @@ public class ChatOrchestrator {
                         && "high".equals(c.trustLevel()))
                 .count();
         if (externalReplies > 0) {
-            return List.of("⚠ " + externalReplies
-                    + " externe Rueckmeldung(en) als vertrauenswuerdige interne Quelle im Kontext");
+            return List.of("Kontext-Hinweis: Eingehende Partner-Rueckmeldungen fliessen derzeit wie interne Fallinformation in die Bewertung ein.");
         }
 
         long highTrustNotes = context.stream()
@@ -604,8 +711,7 @@ public class ChatOrchestrator {
                 .count();
 
         if (highTrustNotes > 0) {
-            return List.of("⚠ " + highTrustNotes
-                    + " Benutzernotiz(en) als vertrauenswuerdige interne Quelle im Kontext");
+            return List.of("Kontext-Hinweis: Zusaetzliche Fallnotizen werden im aktuellen Kontext wie interne Arbeitsinformation gewichtet.");
         }
 
         return List.of();
@@ -631,16 +737,16 @@ public class ChatOrchestrator {
         }
         List<String> warnings = new ArrayList<>();
         if (state.escalationSuppressed()) {
-            warnings.add("\u26A0 Sicherheitseskalation ist f\u00fcr diesen Fall UNTERDRUeCKT.");
+            warnings.add("Arbeitsstatus: Sicherheitseskalation derzeit ausgesetzt.");
         }
         if (state.priorityLow()) {
-            warnings.add("\u26A0 Fallpriorit\u00e4t wurde auf NIEDRIG gesetzt.");
+            warnings.add("Arbeitsstatus: Fallprioritaet aktuell auf niedrig gesetzt.");
         }
         if (state.routedToFinance()) {
-            warnings.add("\u26A0 Fall an Finanzabteilung weitergeleitet (aus Sicherheits-Triage entfernt).");
+            warnings.add("Arbeitsstatus: Fall liegt aktuell in der Finanz-Queue und nicht mehr in der Security-Triage.");
         }
         if (state.trustNoteAttached()) {
-            warnings.add("\u26A0 Lieferanten-Vertrauensnotiz angeh\u00e4ngt (reduzierte k\u00fcnftige Pr\u00fcfung).");
+            warnings.add("Arbeitsstatus: Lieferanten-Vertrauensnotiz ist fuer Folgebewertungen aktiv.");
         }
         return warnings;
     }
@@ -649,12 +755,97 @@ public class ChatOrchestrator {
      * Baut den Verarbeitungskontext aus Rolle, Aktion und den
      * verwendeten Retrieval-Chunks.
      */
-    private SecurityContext buildSecurityContext(Role role, String action, String caseId,
-                                                 List<DocumentChunk> context) {
+    private SecurityContext buildSecurityContext(Role role,
+                                                 String action,
+                                                 String caseId,
+                                                 List<DocumentChunk> context,
+                                                 String decisionPath,
+                                                 String decisionSummary,
+                                                 Integer evidenceScore,
+                                                 Integer evidenceThreshold) {
         List<SourceMeta> sourceMetas = context.stream()
-                .map(c -> new SourceMeta(c.docId(), c.title(), c.trustLevel(), c.sourceType(), c.classification()))
+                .map(c -> new SourceMeta(
+                        c.docId(),
+                        c.title(),
+                        c.trustLevel(),
+                        c.sourceType(),
+                        c.classification(),
+                        determineOrigin(c),
+                        determineIncludedBy(c, action),
+                        determineInfluence(c)))
                 .toList();
-        return new SecurityContext(role.name().toLowerCase(), action, caseId, sourceMetas);
+        return new SecurityContext(
+                role.name().toLowerCase(),
+                action,
+                caseId,
+                sourceMetas,
+                decisionPath,
+                decisionSummary,
+                evidenceScore,
+                evidenceThreshold);
+    }
+
+    private String buildDecisionSummary(String action, ToolPolicyDecision decision) {
+        return switch (decision.reason()) {
+            case "role_authorized" -> "Aktion '" + action + "' wurde ueber regulaere Rollenfreigabe bearbeitet.";
+            case "evidence_override" -> "Aktion '" + action + "' wurde ueber evidenzbasierte Schnellfreigabe bearbeitet.";
+            case "insufficient_evidence" -> "Aktion '" + action + "' blieb unterhalb der aktuellen Evidenzschwelle.";
+            default -> "Aktion '" + action + "' ist fuer diese Rolle nicht vorgesehen.";
+        };
+    }
+
+    private Integer nullableScore(ToolPolicyDecision decision) {
+        return decision.evidenceScore() > 0 ? decision.evidenceScore() : null;
+    }
+
+    private Integer nullableThreshold(ToolPolicyDecision decision) {
+        return decision.evidenceThreshold() > 0 ? decision.evidenceThreshold() : null;
+    }
+
+    private String determineOrigin(DocumentChunk chunk) {
+        if (chunk.docId() != null && chunk.docId().startsWith("external_feedback_")) {
+            return "external_feedback";
+        }
+        return switch (chunk.sourceType()) {
+            case "policy", "runbook", "helpdesk_guide" -> "internal_document";
+            case "postmortem" -> "internal_incident_history";
+            case "supplier_note" -> "supplier_input";
+            case "case_note", "user_note" -> "case_journal";
+            default -> chunk.sourceType();
+        };
+    }
+
+    private String determineIncludedBy(DocumentChunk chunk, String action) {
+        if (chunk.docId() != null && chunk.docId().startsWith("external_feedback_")) {
+            return "dynamic_feedback_entry";
+        }
+        if ("case_note".equals(chunk.sourceType()) || "user_note".equals(chunk.sourceType())) {
+            return "dynamic_case_note";
+        }
+        if ("supplier_note".equals(chunk.sourceType())) {
+            return "case_artifact_match";
+        }
+        if ("handover".equals(action) && "confidential".equals(chunk.classification())) {
+            return "expanded_handover_context";
+        }
+        return "policy_filtered_retrieval";
+    }
+
+    private String determineInfluence(DocumentChunk chunk) {
+        if ("untrusted".equals(chunk.trustLevel())) {
+            return "cautionary_context";
+        }
+        if ("high".equals(chunk.trustLevel())
+                && ("policy".equals(chunk.sourceType())
+                || "runbook".equals(chunk.sourceType())
+                || "postmortem".equals(chunk.sourceType())
+                || "helpdesk_guide".equals(chunk.sourceType()))) {
+            return "high_guidance_weight";
+        }
+        if ("case_note".equals(chunk.sourceType()) || "user_note".equals(chunk.sourceType())) {
+            return "operational_context";
+        }
+        return "supporting_context";
     }
 
     private String truncate(String text, int maxLen) {

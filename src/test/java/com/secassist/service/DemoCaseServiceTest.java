@@ -35,9 +35,9 @@ class DemoCaseServiceTest {
                 .toList();
         assertThat(restricted).hasSize(1);
         assertThat(restricted.get(0).id()).isEqualTo("internal_similarity_signal");
-        assertThat(restricted.get(0).title()).contains("Referenzhinweis");
+        assertThat(restricted.get(0).title()).contains("Korrelationssignal");
         assertThat(restricted.get(0).description()).contains("Themenbereich supply_chain");
-        assertThat(restricted.get(0).description()).contains("Risikoprofil critical");
+        assertThat(restricted.get(0).description()).contains("Kritikalitaet critical");
     }
 
     @Test

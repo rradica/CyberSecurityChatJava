@@ -522,15 +522,16 @@ function appendAssistantResponse(data) {
     const preNodes = [];
     const extraNodes = [];
 
-    if (data.warnings && data.warnings.length) {
-        preNodes.push(renderWarnings(data.warnings));
+    const visibleWarnings = (data.warnings || []).filter(shouldDisplayWarning);
+    if (visibleWarnings.length) {
+        preNodes.push(renderWarnings(visibleWarnings));
     }
 
     if (data.toolResult) {
         extraNodes.push(renderToolResult(data.toolResult));
     }
 
-    const autoExpand = hasViolationWarning(data.warnings);
+    const autoExpand = false;
 
     appendMessageCard({
         type: 'assistant',
@@ -542,10 +543,6 @@ function appendAssistantResponse(data) {
         extraNodes,
         autoExpandMeta: autoExpand
     });
-
-    if (state.activeCaseId) {
-        refreshCaseStateBanner();
-    }
 }
 
 function appendError(text) {
@@ -740,14 +737,13 @@ function renderMetaPanel(meta) {
 function buildAssistantMeta(data, sensitivity) {
     const ctx = data.securityContext || {};
     const sources = Array.isArray(ctx.retrievedSources) ? ctx.retrievedSources : [];
-
     return {
         rows: [
-            { label: 'Rolle', value: translateRole(ctx.role || document.getElementById('roleSelect').value) },
-            { label: 'Modus', value: translateAction(ctx.action || 'chat') },
-            { label: 'Fall', value: ctx.caseId || state.activeCaseId || '—' },
-            { label: 'Sensitivitaet', value: sensitivity.label },
-            { label: 'Quellen', value: sources.length ? `${sources.length} eingebunden` : 'Keine Metadaten hinterlegt' }
+        { label: 'Rolle', value: translateRole(ctx.role || document.getElementById('roleSelect').value) },
+        { label: 'Modus', value: translateAction(ctx.action || 'chat') },
+        { label: 'Fall', value: ctx.caseId || state.activeCaseId || '—' },
+        { label: 'Sensitivitaet', value: sensitivity.label },
+        { label: 'Quellen', value: sources.length ? `${sources.length} eingebunden` : 'Keine Metadaten hinterlegt' }
         ],
         sources
     };
@@ -858,16 +854,15 @@ function getActiveCaseSeverity() {
 
 function classifyWarning(text) {
     if (!text) return 'warning-info';
-    if (text.includes('\uD83D\uDD34') || text.includes('KLASSIFIZIERUNGSVERLETZUNG') || text.includes('RECHTE-ESKALATION')) return 'warning-violation';
-    if (text.includes('\uD83D\uDFE0') || text.includes('METADATEN-LEAK') || text.includes('TRUST-GRENZE')) return 'warning-anomaly';
+    if (text.includes('oberhalb der ueblichen Sichtgrenze') || text.includes('beschleunigte evidenzbasierte Freigabe')) return 'warning-violation';
+    if (text.includes('Korrelationssignal') || text.includes('Verifikationsvorbehalt') || text.includes('Partner-Rueckmeldungen')) return 'warning-anomaly';
     if (text.includes('Zugriff verweigert') || text.includes('\u26D4')) return 'warning-danger';
-    if (text.includes('\u26A0') || text.includes('UNTERDRUECKT') || text.includes('NIEDRIG')) return 'warning-warning';
+    if (text.includes('Arbeitsstatus:')) return 'warning-warning';
     return 'warning-info';
 }
 
-function hasViolationWarning(warnings) {
-    if (!warnings || !warnings.length) return false;
-    return warnings.some(w => classifyWarning(w) === 'warning-violation');
+function shouldDisplayWarning(text) {
+    return classifyWarning(text) === 'warning-danger';
 }
 
 function translateStatus(status) {
@@ -963,29 +958,6 @@ function formatTimestamp(date) {
         hour: '2-digit',
         minute: '2-digit'
     }).format(date);
-}
-
-async function refreshCaseStateBanner() {
-    const banner = document.getElementById('caseStateBanner');
-    if (!banner || !state.activeCaseId) {
-        if (banner) banner.classList.add('hidden');
-        return;
-    }
-    try {
-        const response = await fetch(`${API}/cases/${state.activeCaseId}/state`);
-        if (!response.ok) { banner.classList.add('hidden'); return; }
-        const caseState = await response.json();
-        const effects = [];
-        if (caseState.escalationSuppressed) effects.push('Eskalation UNTERDRUECKT');
-        if (caseState.priorityLow) effects.push('Prioritaet auf NIEDRIG gesetzt');
-        if (caseState.routedToFinance) effects.push('An Finanzabteilung weitergeleitet (Security entfernt)');
-        if (caseState.trustNoteAttached) effects.push('Lieferanten-Vertrauensnotiz angehaengt');
-        if (!effects.length) { banner.classList.add('hidden'); return; }
-        banner.innerHTML = `<strong>FALLZUSTAND VERAENDERT</strong><div class="case-state-effects">${effects.map(e => `<span>${escHtml(e)}</span>`).join('')}</div>`;
-        banner.classList.remove('hidden');
-    } catch (_) {
-        banner.classList.add('hidden');
-    }
 }
 
 function escHtml(text) {

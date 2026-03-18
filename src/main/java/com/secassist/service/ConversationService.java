@@ -255,17 +255,10 @@ public class ConversationService {
                 ? "Externe Rueckmeldung zu **" + caseId + "** uebernommen."
                 : "Rueckmeldung zu **" + caseId + "** gespeichert.")
                 + "\n**Vertrauensstufe:** " + trustLabel
-                + " | **Klassifizierung:** " + classLabel;
+                + " | **Klassifizierung:** " + classLabel
+                + "\nDer Eintrag steht im Falljournal fuer spaetere Analyse-, Evidence- und Triage-Pfade bereit.";
 
-        List<String> warnings = new ArrayList<>();
-        if ("high".equals(note.trustLevel())
-                && ("case_note".equals(note.sourceType()) || "user_note".equals(note.sourceType()))) {
-            warnings.add(externalFeedback
-                    ? "⚠ Externe Rueckmeldung als vertrauenswuerdige interne Quelle gespeichert"
-                    : "⚠ Benutzernotiz als vertrauenswuerdige interne Quelle gespeichert");
-        }
-
-        return new ChatResponse(reply, List.of(), null, warnings, null);
+        return new ChatResponse(reply, List.of(), null, List.of(), null);
     }
 
     private static String translateTrust(String level) {

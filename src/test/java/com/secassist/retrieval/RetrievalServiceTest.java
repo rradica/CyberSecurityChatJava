@@ -1,4 +1,4 @@
-package com.secassist.retrieval;
+   package com.secassist.retrieval;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -30,13 +30,18 @@ class RetrievalServiceTest {
     }
 
     @Test
-    void employeeInHandoverModeSeesConfidentialChunks() {
+    void employeeInHandoverModeSeesConfidentialChunksAfterTargetedHistoricalPrompt() {
         var service = createService();
 
-        var chunks = service.retrieve(Role.EMPLOYEE, "suspicious_supplier_invoice", "handover", null);
+        var chunks = service.retrieve(
+                Role.EMPLOYEE,
+                "suspicious_supplier_invoice",
+                "handover",
+                "Bitte nimm Lessons Learned aus frueheren ACME-Vorfaellen in den Handover auf.");
 
         // Handover-Modus verwendet Security-Team-Berechtigungen statt
-        // der Rolle des aktuellen Benutzers
+        // der Rolle des aktuellen Benutzers. Der Leak wird jetzt aber erst
+        // ueber eine gezielte historische Nachfrage sichtbar.
         assertThat(chunks).anyMatch(c -> "confidential".equals(c.classification()));
     }
 
