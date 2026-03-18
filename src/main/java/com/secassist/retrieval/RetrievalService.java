@@ -91,12 +91,11 @@ public class RetrievalService {
                 .collect(Collectors.toCollection(ArrayList::new));
 
         // Schritt 2: Policy-Filter nach Klassifikation und Zielgruppe
-        // SCHWACHSTELLE [BUG_HANDOVER_SCOPE]: Bei gezielten historischen Rueckfragen
-        // im Handover-Modus werden fest die Berechtigungen des Security-Teams
-        // verwendet statt der aktuellen Rolle.
-        // FIX: Immer policyEngine.allowedClassifications(role) und
-        // policyEngine.allowedAudiences(role) der aktuellen Rolle verwenden.
-        // ERKLAERUNG: Sonst wird vor dem Kontextaufbau die falsche Berechtigung angesetzt.
+        // SCHWACHSTELLE [01 - BUG_HANDOVER_SCOPE]: Hier werden bei bestimmten
+        // Handover-Anfragen nicht die Rechte der aktuellen Rolle verwendet.
+        // Stattdessen wird der Scope so erweitert, als waere der Benutzer bereits
+        // Teil des Security-Teams. Dadurch koennen vertrauliche Quellen in den
+        // Kontext rutschen, obwohl ein normaler employee sie nicht sehen duerfte.
         boolean expandedHandoverScope = "handover".equals(mode) && requestsHistoricalLessons(query);
         Set<String> allowedClassifications = expandedHandoverScope
                 ? Set.of("public", "internal", "confidential")
@@ -123,17 +122,17 @@ public class RetrievalService {
 
     /**
      * Fuegt eine Benutzernotiz als Chunk hinzu.
-     * SCHWACHSTELLE [BUG_RAG_POISONING]: Die Notiz wird als interne High-Trust-Quelle gespeichert.
-     * FIX: Notizen als {@code user_note} mit {@code trustLevel=untrusted} speichern.
-     * ERKLAERUNG: Ungepruefter Input darf spaeter nicht wie kuratierte interne Evidenz wirken.
+     * SCHWACHSTELLE [05 - BUG_RAG_POISONING]: Freier Benutzereingang wird hier
+     * wie internes Wissen gespeichert. Dadurch kann die Notiz spaeter wieder im
+     * Retrieval auftauchen und wie echte interne Evidenz wirken.
      */
     public DocumentChunk addUserNote(String caseId, String text) {
         int num = noteCounter.incrementAndGet();
 
-        // SCHWACHSTELLE [BUG_RAG_POISONING]: Benutzernotizen werden wie interne,
-        // vertrauenswuerdige Dokumente behandelt.
-        // FIX: sourceType=user_note, classification=public, trustLevel=untrusted setzen.
-        // ERKLAERUNG: Die Notiz bleibt sichtbar, zaehlt aber nicht als interne Quelle.
+        // SCHWACHSTELLE [05 - BUG_RAG_POISONING]: Die Notiz bekommt hier Merkmale,
+        // die sonst fuer interne, vertrauenswuerdige Quellen stehen.
+        // Spaetere Logik erkennt dadurch nicht mehr sauber, dass der Inhalt nur
+        // aus einer freien Benutzereingabe stammt.
         DocumentChunk note = createDynamicChunk(
                 num,
                 "case_note_" + caseId,
@@ -154,9 +153,10 @@ public class RetrievalService {
 
     /**
      * Fuegt eine externe Rueckmeldung als Fallkontext hinzu.
-     * SCHWACHSTELLE [BUG_RAG_POISONING]: Externe Rueckmeldungen werden als interne High-Trust-Quelle gespeichert.
-     * FIX: Externe Rueckmeldungen als getrennte, ungepruefte Quelle speichern.
-     * ERKLAERUNG: Ein Partnerkanal ist eine Trust Boundary und keine interne Wissensquelle.
+     * SCHWACHSTELLE [05 - BUG_RAG_POISONING]: Externe Rueckmeldungen werden hier
+     * so gespeichert, dass sie spaeter wie internes Fallwissen aussehen koennen.
+     * Fremdinhalt kann dadurch in spaeteren Antworten und Entscheidungen zu viel
+     * Gewicht bekommen.
      */
     public DocumentChunk addExternalFeedback(String caseId, String sender, String channel, String text) {
         int num = noteCounter.incrementAndGet();
@@ -167,10 +167,10 @@ public class RetrievalService {
         tags.add("partner");
         tags.add("reply");
 
-        // SCHWACHSTELLE [BUG_RAG_POISONING]: Externe Rueckmeldungen kippen die
-        // Trust-Boundary und landen als interne, vertrauenswuerdige Fallnotiz.
-        // FIX: external_feedback mit untrusted/public speichern und separat kennzeichnen.
-        // ERKLAERUNG: Fremdinhalt darf im Retrieval nicht denselben Status wie internes Wissen erhalten.
+        // SCHWACHSTELLE [05 - BUG_RAG_POISONING]: Eine externe Nachricht wird hier
+        // nicht nur gespeichert, sondern wie interne Fall-Evidenz eingeordnet.
+        // Dadurch kann eingeschleuster Fremdinhalt spaeter bei Retrieval, Prompt
+        // und Tool-Entscheidungen wie verifizierte Information wirken.
         DocumentChunk feedback = createDynamicChunk(
                 num,
                 "external_feedback_" + caseId,

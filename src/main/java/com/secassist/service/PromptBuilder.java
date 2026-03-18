@@ -19,11 +19,9 @@ import com.secassist.model.Role;
  * Kontext erhaelt, den die Anwendung zuvor freigegeben hat.</p>
  *
  * <p>Fuer den Workshop ist der PromptBuilder besonders interessant, weil hier
- * die Schwachstelle {@code BUG_TRUST_MERGE} sichtbar wird: Quellen mit
- * unterschiedlichem Vertrauensniveau werden zu stark vereinheitlicht. Die
- * Klasse bleibt dennoch bewusst einfach aufgebaut, damit Teilnehmerinnen und
- * Teilnehmer nachvollziehen koennen, wie sich Prompt-Struktur direkt auf das
- * Verhalten des Modells auswirkt.</p>
+ * die Schwachstelle {@code 03 - BUG_TRUST_MERGE} sichtbar wird: Quellen mit
+ * unterschiedlichem Vertrauensniveau werden sprachlich zu stark vereinheitlicht.
+ * Dadurch kann untrusted Inhalt glaubwuerdiger wirken als er sollte.</p>
  */
 @Service
 public class PromptBuilder {
@@ -83,10 +81,10 @@ public class PromptBuilder {
         }
 
         if (!context.isEmpty()) {
-            // SCHWACHSTELLE [BUG_TRUST_MERGE]: Trusted und untrusted Quellen landen
-            // in einem gemeinsamen Block und wirken dadurch wie ein einheitlicher Konsens.
-            // FIX: Quellen in getrennte Sektionen mit Trust-Hinweis aufteilen.
-            // ERKLAERUNG: Das Modell soll Herkunft und Konflikte der Aussagen klar erkennen koennen.
+            // SCHWACHSTELLE [03 - BUG_TRUST_MERGE]: Alle Quellen werden hier wie
+            // eine gemeinsame, bereits abgestimmte Gesamtsicht dargestellt.
+            // Dadurch sieht das Modell nicht mehr klar, was aus interner Guidance
+            // stammt und was nur eine ungepruefte externe Behauptung ist.
             appendConsolidatedGuidance(sb, context);
         }
 

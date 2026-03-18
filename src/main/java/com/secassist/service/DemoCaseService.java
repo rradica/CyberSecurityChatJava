@@ -26,11 +26,9 @@ import com.secassist.model.Role;
  * externe Abhaengigkeiten ablaufen.</p>
  *
  * <p>Gleichzeitig liegt hier bewusst die Schwachstelle
- * {@code BUG_EXISTENCE_ORACLE}: Nicht-Analysten koennen ueber Similar-Cases
- * einen plausiblen Hinweis auf interne Vorfaelle erhalten. Die Klasse ist
- * deshalb fachlich leicht lesbar aufgebaut, damit der Unterschied zwischen
- * legitimer Fallhilfe und unerwuenschtem Metadaten-Leak im Workshop gut
- * nachvollzogen werden kann.</p>
+ * {@code 02 - BUG_EXISTENCE_ORACLE}: Nicht-Analysten koennen ueber Similar-Cases
+ * indirekt erfahren, dass es interne Vorfaelle mit aehnlichem Muster gibt.
+ * Die Inhalte bleiben verborgen, aber schon dieser Hinweis ist ein Leak.</p>
  */
 @Service
 public class DemoCaseService {
@@ -230,10 +228,10 @@ public class DemoCaseService {
             // Analysten sehen vollstaendige Details interner Faelle
             similar.addAll(INTERNAL_CASES);
         } else if (query != null && !query.isBlank()) {
-            // SCHWACHSTELLE [BUG_EXISTENCE_ORACLE]: Suchanfragen beziehen auch den
-            // eingeschraenkten Korpus ein und erzeugen einen redaktierten Hinweis.
-            // FIX: Query nur gegen erlaubte Faelle auswerten und keinen Ersatzhinweis erzeugen.
-            // ERKLAERUNG: Auch ein redaktierter Treffer bestaetigt interne Vorfaelle.
+            // SCHWACHSTELLE [02 - BUG_EXISTENCE_ORACLE]: Die Suchanfrage wird hier
+            // auch gegen interne Faelle geprueft, obwohl die Rolle sie nicht sehen darf.
+            // Der Benutzer bekommt zwar keinen Vollzugriff, aber schon der redaktierte
+            // Hinweis verraet, dass passende interne Vorfaelle existieren.
             similar.addAll(redactedSummaries(caseId, currentCase, query));
         }
 

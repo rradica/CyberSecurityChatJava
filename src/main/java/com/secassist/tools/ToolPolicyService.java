@@ -19,10 +19,9 @@ import com.secassist.policy.PolicyEngine;
  * ist. Damit bleibt die Autorisierung fest im deterministischen Anwendungscode.</p>
  *
  * <p>Fuer den Workshop liegt hier bewusst die Schwachstelle
- * {@code BUG_TOOL_FASTTRACK}: Der evidenzbasierte Override ist zu grosszuegig
- * modelliert und kann dadurch Analysten-Aktionen fuer weniger privilegierte
- * Rollen freigeben. Die Logik ist absichtlich kompakt, damit der Fehler schnell
- * verstanden und gezielt behoben werden kann.</p>
+ * {@code 04 - BUG_TOOL_FASTTRACK}: Der Evidenzpfad ist zu grosszuegig und kann
+ * dadurch Aktionen fuer weniger privilegierte Rollen freigeben, obwohl die
+ * normale Rollenpruefung sie eigentlich sperren sollte.</p>
  */
 @Service
 public class ToolPolicyService {
@@ -60,10 +59,10 @@ public class ToolPolicyService {
             log.debug("Evidence score for '{}': {} (threshold: {})", toolName, score, threshold);
 
             if (score >= threshold) {
-                // SCHWACHSTELLE [BUG_TOOL_FASTTRACK]: Es fehlt die Pruefung,
-                // ob ueberhaupt eine vertrauenswuerdige Quelle vorhanden ist.
-                // FIX: Neben dem Score mindestens eine trusted Quelle erzwingen.
-                // ERKLAERUNG: Hohe Punktzahl aus untrusted Material darf keine Freigabe erzeugen.
+                // SCHWACHSTELLE [04 - BUG_TOOL_FASTTRACK]: Ab hier reicht der Score
+                // allein fuer eine Freigabe. Es wird nicht mehr sauber geprueft,
+                // ob die starken Punkte aus wirklich vertrauenswuerdigen Quellen
+                // stammen oder nur aus plausibel klingenden Hinweisen.
                 return ToolPolicyDecision.evidenceOverride(score, threshold);
             }
             return ToolPolicyDecision.insufficientEvidence(score, threshold);
@@ -81,10 +80,10 @@ public class ToolPolicyService {
             int weight = sourceWeight(chunk);
             if (weight == 0) continue;
 
-              // SCHWACHSTELLE [BUG_TOOL_FASTTRACK]: case_note zaehlt wie policy/runbook.
-            // In Kombination mit BUG_RAG_POISONING erhoeht das eingeschleuste Notizen.
-            // FIX: case_note aus dem Score entfernen oder nur streng validiert werten.
-            // ERKLAERUNG: Operative Notizen sind nicht automatisch belastbare Sicherheitsevidenz.
+            // SCHWACHSTELLE [04 - BUG_TOOL_FASTTRACK]: Fallnotizen zaehlen hier so,
+            // als waeren sie so stark wie Policy oder Runbook.
+            // Dadurch koennen auch schwache oder eingeschleuste Inhalte den Score
+            // fuer eine Freigabe deutlich erhoehen.
             if ("policy".equals(chunk.sourceType()) || "runbook".equals(chunk.sourceType())
                     || "case_note".equals(chunk.sourceType())) {
                 score += weight;
@@ -108,10 +107,10 @@ public class ToolPolicyService {
                 score += 2 * weight;
             }
 
-            // SCHWACHSTELLE [BUG_TOOL_FASTTRACK]: Auch operative Signale erhoehen den
-            // Score, obwohl sie keine echte Sicherheitsevidenz sind.
-            // FIX: Diesen Bonus entfernen.
-            // ERKLAERUNG: Geschaeftskontext ist nuetzlich fuer Triage, aber keine Autorisierungsgrundlage.
+            // SCHWACHSTELLE [04 - BUG_TOOL_FASTTRACK]: Auch beruhigende Aussagen aus
+            // dem Geschaeftskontext erhoehen hier den Freigabe-Score.
+            // Solche Signale koennen zwar plausibel wirken, sind aber keine harte
+            // Sicherheitsevidenz fuer eine sensible Aktion.
             if (text.contains("existing supplier") || text.contains("established business")
                     || text.contains("regular vendor") || text.contains("approved contractor")
                     || text.contains("bestehender lieferant")
@@ -133,9 +132,9 @@ public class ToolPolicyService {
 
     /**
      * Gibt den effektiven Evidenz-Schwellwert fuer eine Aktion zurueck.
-     * SCHWACHSTELLE [BUG_TOOL_FASTTRACK]: Einige Aktionen haben zu niedrige Schwellwerte.
-     * FIX: Einheitlichen Schwellwert fuer alle sensitiven Aktionen verwenden.
-     * ERKLAERUNG: Niedrige Sondergrenzen machen die Fast-Track-Freigabe zu leicht ausloesbar.
+     * SCHWACHSTELLE [04 - BUG_TOOL_FASTTRACK]: Manche Aktionen haben hier
+     * niedrigere Schwellwerte als andere. Dadurch wird die Freigabe leichter
+     * ausgeloest, als es die normale Policy erwarten laesst.
      */
     int effectiveThreshold(String toolName) {
         return switch (toolName) {
@@ -147,9 +146,9 @@ public class ToolPolicyService {
 
     /**
      * Gewichtung einer Quelle im Evidence-Score.
-     * SCHWACHSTELLE [BUG_TOOL_FASTTRACK]: Alle Quellen zaehlen gleich stark.
-     * FIX: Untrusted Quellen deutlich abwerten oder ganz ausschliessen.
-     * ERKLAERUNG: Sonst koennen ungepruefte Aussagen denselben Einfluss wie interne Evidenz haben.
+     * SCHWACHSTELLE [04 - BUG_TOOL_FASTTRACK]: Alle Quellen bekommen hier das
+     * gleiche Gewicht. Ungepruefte Hinweise koennen dadurch fast so stark zaehlen
+     * wie interne, kuratierte Quellen.
      */
     int sourceWeight(DocumentChunk chunk) {
         return 1;
